@@ -1,0 +1,11 @@
+[package]
+name = "qk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+logos = "0.16.1"
+miette = { version = "7.6.0", features = ["fancy"] }
+rustyline = "17.0.2"
+smallvec = { version = "1.15.1", features = ["const_new"] }
+thiserror = "2.0.18"
