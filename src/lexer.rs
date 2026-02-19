@@ -8,6 +8,12 @@ pub struct Meta<T> {
     pub at: SourceSpan,
 }
 
+impl<T> Meta<T> {
+    pub fn from_code<'a>(&self, src: &'a str) -> &'a str {
+        &src[self.at.offset()..self.at.offset() + self.at.len()]
+    }
+}
+
 pub fn over(l: SourceSpan, r: SourceSpan) -> SourceSpan {
     SourceSpan::new(l.offset().into(), r.offset() + r.len() - l.offset())
 }

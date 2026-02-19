@@ -1,6 +1,6 @@
 use miette::{Diagnostic, NamedSource, Severity};
-use qk::lexer::TkTy;
 use qk::parser::Parser;
+use qk::{compiler::Compiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use smallvec::{SmallVec, ToSmallVec};
 use std::{fmt::Write, time::Instant};
@@ -126,12 +126,12 @@ impl Setting {
 }
 
 pub const BENCH_SETTING: Setting = Setting {
-    all: &["lexer", "parser", "command"],
+    all: &["lexer", "parser", "command", "compiler"],
     on: SmallVec::new_const(),
 };
 
 pub const SHOW_SETTING: Setting = Setting {
-    all: &["lexer", "parser", "command"],
+    all: &["lexer", "parser", "command", "compiler"],
     on: SmallVec::new_const(),
 };
 
@@ -142,6 +142,7 @@ pub struct Repl {
     pub errors: usize,
     pub bench: Setting,
     pub show: Setting,
+    pub compiler: Compiler,
 }
 
 impl Repl {
@@ -217,7 +218,13 @@ impl Repl {
             self.report(report, input.to_string());
         }
         let t = self.bench("parser", |_| Parser::new(lexer).parse_app())?;
-        println!("{t:#?}");
+        if self.show.on.contains(&"parser") {
+            println!("{t:#?}");
+        }
+        let compiled = self.compiler.compile(t, input);
+        if self.show.on.contains(&"compiler") {
+            println!("{compiled}");
+        }
         Ok(())
     }
 
@@ -260,6 +267,7 @@ impl Repl {
             errors: 0,
             bench: BENCH_SETTING.clone(),
             show: SHOW_SETTING.clone(),
+            compiler: Default::default(),
         };
         Ok(s)
     }
