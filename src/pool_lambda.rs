@@ -42,9 +42,9 @@ impl fmt::Display for Pool {
             .pool
             .iter()
             .map(|t| match t {
-                Term::Var(id) => format!("ν {id:?}"),
-                Term::App(l, r) => format!("{l:?} ⋅ {r:?}"),
-                Term::Abs { inner } => format!("λ {inner:?}"),
+                Term::Var(id) => format!("ν {}", id.0),
+                Term::App(l, r) => format!("{} ⋅ {}", l.0, r.0),
+                Term::Abs { inner } => format!("λ {}", inner.0),
             })
             .collect();
         f.write_str(&v.join(", "))?;
