@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::fmt;
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
@@ -8,9 +8,12 @@ use crate::ast::{Ast, Node};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TermIdx(usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct OutterIdx(usize);
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Term {
-    Var(TermIdx),
+    Var(OutterIdx),
     Abs { inner: TermIdx },
     App(TermIdx, TermIdx),
 }
@@ -55,22 +58,27 @@ impl fmt::Display for Pool {
 impl Pool {
     pub fn compile(ast: Node, src: &str) -> Result<Self> {
         let mut s = Self::default();
-        let mut scopes = HashMap::default();
+        let mut scopes = Vec::default();
         s.compile_node(&mut scopes, &ast, src)?;
         Ok(s)
     }
 
     fn compile_node<'a>(
         &mut self,
-        scopes: &mut HashMap<&'a str, TermIdx>,
+        scopes: &mut Vec<&'a str>,
         ast: &Node,
         src: &'a str,
     ) -> Result<TermIdx> {
         match &ast.item {
             Ast::Var => {
                 let var_name = ast.from_code(src);
-                if let Some(id) = scopes.get(var_name) {
-                    self.pool.push(Term::Var(*id));
+                if let Some((id, _)) = scopes
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .find(|(_, s)| **s == var_name)
+                {
+                    self.pool.push(Term::Var(OutterIdx(id)));
                 } else {
                     Err(Error::UndeclaredVariable { at: ast.at })?
                 }
@@ -79,12 +87,9 @@ impl Pool {
                 let term_idx = self.pool.len();
                 self.pool.push(Term::Abs { inner: TermIdx(0) });
                 let var_name = &src[v.offset()..v.offset() + v.len()];
-                let old_value = scopes.insert(var_name, TermIdx(term_idx));
+                scopes.push(var_name);
                 let body = self.compile_node(scopes, inner, src)?;
-                match old_value {
-                    Some(t) => scopes.insert(var_name, t),
-                    None => scopes.remove(var_name),
-                };
+                scopes.pop();
                 if let Term::Abs { ref mut inner, .. } = self.pool[term_idx] {
                     *inner = body;
                 }
