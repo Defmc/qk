@@ -41,24 +41,27 @@ pub struct Pool {
 impl fmt::Display for Pool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("[ ")?;
-        let v: Vec<_> = self
-            .pool
-            .iter()
-            .map(|t| match t {
-                Term::Var(id) => format!("ν {}", id.0),
-                Term::App(l, r) => format!("{} ⋅ {}", l.0, r.0),
-                Term::Abs { inner } => format!("λ {}", inner.0),
-            })
-            .collect();
-        f.write_str(&v.join(", "))?;
-        f.write_str("]")
+        for (i, t) in self.pool.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            match t {
+                Term::Var(OuterIdx(idx)) => write!(f, "ν {idx}")?,
+                Term::Abs {
+                    inner: TermIdx(idx),
+                } => write!(f, "λ {idx}")?,
+                Term::App(TermIdx(l), TermIdx(r)) => write!(f, "{l} ⋅ {r}")?,
+            }
+        }
+        f.write_str(" ]")?;
+        Ok(())
     }
 }
 
 impl Pool {
     pub fn compile(ast: Node, src: &str) -> Result<Self> {
         let mut s = Self::default();
-        let mut scopes = Vec::default();
+        let mut scopes = Vec::new();
         s.compile_node(&mut scopes, &ast, src)?;
         Ok(s)
     }
