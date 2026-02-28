@@ -35,6 +35,23 @@ pub struct Pool {
     pub pool: Vec<Term>,
 }
 
+impl fmt::Display for Pool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("[ ")?;
+        let v: Vec<_> = self
+            .pool
+            .iter()
+            .map(|t| match t {
+                Term::Var(id) => format!("ν {id:?}"),
+                Term::App(l, r) => format!("{l:?} ⋅ {r:?}"),
+                Term::Abs { inner } => format!("λ {inner:?}"),
+            })
+            .collect();
+        f.write_str(&v.join(", "))?;
+        f.write_str("]")
+    }
+}
+
 impl Pool {
     pub fn compile(ast: Node, src: &str) -> Result<Self> {
         let mut s = Self::default();
