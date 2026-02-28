@@ -9,11 +9,11 @@ use crate::ast::{Ast, Node};
 pub struct TermIdx(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct OutterIdx(usize);
+pub struct OuterIdx(usize);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Term {
-    Var(OutterIdx),
+    Var(OuterIdx),
     Abs { inner: TermIdx },
     App(TermIdx, TermIdx),
 }
@@ -72,34 +72,31 @@ impl Pool {
         match &ast.item {
             Ast::Var => {
                 let var_name = ast.from_code(src);
-                if let Some((id, _)) = scopes
+                let (id, _) = scopes
                     .iter()
                     .rev()
                     .enumerate()
                     .find(|(_, s)| **s == var_name)
-                {
-                    self.pool.push(Term::Var(OutterIdx(id)));
-                } else {
-                    Err(Error::UndeclaredVariable { at: ast.at })?
-                }
+                    .ok_or(Error::UndeclaredVariable { at: ast.at })?;
+                Ok(self.push(Term::Var(OuterIdx(id))))
             }
             Ast::Abs(v, inner) => {
-                let term_idx = self.pool.len();
-                self.pool.push(Term::Abs { inner: TermIdx(0) });
                 let var_name = &src[v.offset()..v.offset() + v.len()];
                 scopes.push(var_name);
-                let body = self.compile_node(scopes, inner, src)?;
+                let inner = self.compile_node(scopes, inner, src)?;
                 scopes.pop();
-                if let Term::Abs { ref mut inner, .. } = self.pool[term_idx] {
-                    *inner = body;
-                }
+                Ok(self.push(Term::Abs { inner }))
             }
             Ast::App(l, r) => {
                 let l = self.compile_node(scopes, l, src)?;
                 let r = self.compile_node(scopes, r, src)?;
-                self.pool.push(Term::App(l, r));
+                Ok(self.push(Term::App(l, r)))
             }
         }
-        Ok(TermIdx(self.pool.len() - 1))
+    }
+
+    pub fn push(&mut self, t: Term) -> TermIdx {
+        self.pool.push(t);
+        TermIdx(self.pool.len() - 1)
     }
 }
