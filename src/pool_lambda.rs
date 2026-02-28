@@ -46,11 +46,11 @@ impl fmt::Display for Pool {
                 f.write_str(", ")?;
             }
             match t {
-                Term::Var(OuterIdx(idx)) => write!(f, "ν {idx}")?,
+                Term::Var(OuterIdx(idx)) => write!(f, "ν{idx}")?,
                 Term::Abs {
                     inner: TermIdx(idx),
-                } => write!(f, "λ {idx}")?,
-                Term::App(TermIdx(l), TermIdx(r)) => write!(f, "{l} ⋅ {r}")?,
+                } => write!(f, "λ{idx}")?,
+                Term::App(TermIdx(l), TermIdx(r)) => write!(f, "{l}⋅{r}")?,
             }
         }
         f.write_str(" ]")?;
