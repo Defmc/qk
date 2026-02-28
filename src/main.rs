@@ -1,6 +1,6 @@
 use miette::{Diagnostic, NamedSource, Severity};
+use qk::lexer::TkTy;
 use qk::parser::Parser;
-use qk::{compiler::Compiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use smallvec::{SmallVec, ToSmallVec};
 use std::{fmt::Write, time::Instant};
@@ -42,6 +42,10 @@ pub enum Error {
     #[error(transparent)]
     #[diagnostic(transparent)]
     ParserError(#[from] qk::parser::Error),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    CompilerError(#[from] qk::pool_lambda::Error),
 }
 
 pub struct Command<'a> {
@@ -142,7 +146,6 @@ pub struct Repl {
     pub errors: usize,
     pub bench: Setting,
     pub show: Setting,
-    pub compiler: Compiler,
 }
 
 impl Repl {
@@ -219,9 +222,9 @@ impl Repl {
         }
         let t = self.bench("parser", |_| Parser::new(lexer).parse_app())?;
         if self.show.on.contains(&"parser") {
-            println!("{t:#?}");
+            qk::ast::display_node(&t);
         }
-        let compiled = self.compiler.compile(t, input);
+        let compiled = qk::pool_lambda::Pool::compile(t, input)?;
         if self.show.on.contains(&"compiler") {
             println!("{compiled}");
         }
@@ -267,7 +270,6 @@ impl Repl {
             errors: 0,
             bench: BENCH_SETTING.clone(),
             show: SHOW_SETTING.clone(),
-            compiler: Default::default(),
         };
         Ok(s)
     }
