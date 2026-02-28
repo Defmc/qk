@@ -23,13 +23,13 @@ pub fn display_node(n: &Node) {
         match &n.item {
             Ast::Var => println!("ν @ {span}"),
             Ast::Abs(v, inner) => {
-                println!("λ {} @ {span} ∈", span_str(&v));
-                indented(&inner, depth);
+                println!("λ {} @ {span} ∈", span_str(v));
+                indented(inner, depth);
             }
             Ast::App(l, r) => {
                 println!("⋅ @ {span}");
-                indented(&l, depth);
-                indented(&r, depth);
+                indented(l, depth);
+                indented(r, depth);
             }
         }
     }
