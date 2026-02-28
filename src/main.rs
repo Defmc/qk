@@ -224,7 +224,7 @@ impl Repl {
         if self.show.on.contains(&"parser") {
             qk::ast::display_node(&t);
         }
-        let compiled = self.bench("compiler", |_| qk::pool_lambda::Pool::compile(t, input))?;
+        let compiled = self.bench("compiler", |_| qk::pool_lambda::Pool::compile(&t, input))?;
         if self.show.on.contains(&"compiler") {
             println!("{compiled}");
         }
