@@ -59,10 +59,10 @@ impl fmt::Display for Pool {
 }
 
 impl Pool {
-    pub fn compile(ast: Node, src: &str) -> Result<Self> {
+    pub fn compile(ast: &Node, src: &str) -> Result<Self> {
         let mut s = Self::default();
         let mut scopes = Vec::new();
-        s.compile_node(&mut scopes, &ast, src)?;
+        s.compile_node(&mut scopes, ast, src)?;
         Ok(s)
     }
 
