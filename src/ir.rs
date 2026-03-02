@@ -152,7 +152,18 @@ impl Scope {
         if let Some(id) = self.definitions.get(s) {
             return *id;
         } else {
-            self.push(s.into(), IrComponent::Pending.into())
+            self.push(s.into(), IrComponent::Pending.at((0..=0).into()))
         }
+    }
+
+    /// ensures the IR contains all the definitions it needs to compile itself
+    pub fn check_for_pendings(&mut self) -> Result<()> {
+        for (_k, v) in self.definitions.iter() {
+            let comp = &self.res_pool[v.0];
+            if comp.item == IrComponent::Pending {
+                return Err(Error::UndeclaredVariable { at: comp.at });
+            }
+        }
+        Ok(())
     }
 }
