@@ -1,6 +1,6 @@
 use miette::{Diagnostic, NamedSource, Severity};
-use qk::lexer::TkTy;
 use qk::parser::Parser;
+use qk::{ir::IrCompiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use smallvec::{SmallVec, ToSmallVec};
 use std::{fmt::Write, time::Instant};
@@ -42,6 +42,10 @@ pub enum Error {
     #[error(transparent)]
     #[diagnostic(transparent)]
     ParserError(#[from] qk::parser::Error),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    IrCompilerError(#[from] qk::ir::Error),
 
     #[error(transparent)]
     #[diagnostic(transparent)]
@@ -130,12 +134,12 @@ impl Setting {
 }
 
 pub const BENCH_SETTING: Setting = Setting {
-    all: &["lexer", "parser", "command", "compiler"],
+    all: &["lexer", "parser", "command", "ir", "compiler"],
     on: SmallVec::new_const(),
 };
 
 pub const SHOW_SETTING: Setting = Setting {
-    all: &["lexer", "parser", "command", "compiler"],
+    all: &["lexer", "parser", "command", "ir", "compiler"],
     on: SmallVec::new_const(),
 };
 
@@ -146,6 +150,7 @@ pub struct Repl {
     pub errors: usize,
     pub bench: Setting,
     pub show: Setting,
+    pub irc: IrCompiler,
 }
 
 impl Repl {
@@ -212,6 +217,7 @@ impl Repl {
                 }
             })
             .collect();
+
         if self.show.on.contains(&"lexer") {
             let report = miette::MietteDiagnostic::new("lexer's output")
                 .with_labels(lexer[..lexer.len() - 1].iter().map(|tk| {
@@ -228,12 +234,35 @@ impl Repl {
                 p.cleared().parse_program()
             })
         })?;
+
         if self.show.on.contains(&"parser") {
             qk::ast::display_node(&t);
         }
-        let compiled = self.bench("compiler", |_| qk::compiler::Compiler::compile(&t, input))?;
-        if self.show.on.contains(&"compiler") {
-            println!("{compiled}");
+
+        if matches!(t.item, qk::ast::Ast::Program(..)) {
+            self.run_executable(t, input)
+        } else {
+            self.declare_code(t, input)
+        }
+
+        // let compiled = self.bench("compiler", |_| qk::compiler::Compiler::compile(&t, input))?;
+        // if self.show.on.contains(&"compiler") {
+        //     println!("{compiled}");
+        // }
+    }
+
+    pub fn run_executable(&mut self, ast: qk::ast::Node, src: &str) -> Result<()> {
+        let ir = self.bench("ir", |s| s.irc.compile(ast, src))?;
+        if self.show.on.contains(&"ir") {
+            println!("{ir:#?}")
+        }
+        Ok(())
+    }
+
+    pub fn declare_code(&mut self, ast: qk::ast::Node, src: &str) -> Result<()> {
+        let ir = self.bench("ir", |s| s.irc.compile_program(ast, src))?;
+        if self.show.on.contains(&"ir") {
+            println!("{ir:#?}")
         }
         Ok(())
     }
