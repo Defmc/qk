@@ -68,11 +68,11 @@ impl Parser {
         })
     }
 
-    pub fn syntax(&mut self, tk: TkTy) -> Result<()> {
+    pub fn syntax(&mut self, tk: TkTy) -> Result<&Token> {
         let peek = self.current()?;
         if peek.item == tk {
             self.idx += 1;
-            Ok(())
+            Ok(self.current()?)
         } else {
             Err(Error::UnexpectedToken {
                 exp: tk,
@@ -85,19 +85,51 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Node> {
         self.parse_app()
     }
+
+    pub fn parse_program(&mut self) -> Result<Node> {
+        let mut steps = Vec::new();
+        let start = self.current()?.at;
+        while self.idx < self.tokens.len() {
+            steps.push(self.parse_step()?);
+        }
+        let end = steps.last().map(|n| n.at).unwrap_or(start);
+        Ok(Ast::Program(steps).at(lexer::over(start, end)))
+    }
+
+    pub fn parse_step(&mut self) -> Result<Node> {
+        let ident = self.syntax(TkTy::Assign)?.at;
+        let mut params = Vec::new();
+        loop {
+            match self.syntax(TkTy::Ident) {
+                Ok(p) => params.push(p.at),
+                Err(Error::UnexpectedToken { .. }) => break,
+                Err(e) => return Err(e),
+            }
+        }
+        self.syntax(TkTy::Assign)?;
+        let body = self.parse_app()?;
+        let span = lexer::over(ident, body.at);
+        Ok(Ast::Def {
+            ident,
+            params,
+            body,
+        }
+        .at(span))
+    }
+
     pub fn parse_abs(&mut self) -> Result<Node> {
         self.syntax(TkTy::Function)?;
 
         let mut params = Vec::new();
 
-        while self.current()?.item == TkTy::Variable {
+        while self.current()?.item == TkTy::Ident {
             let var_span = self.current()?.at;
             self.idx += 1;
             params.push(var_span);
         }
 
         if params.is_empty() {
-            self.syntax(TkTy::Variable)?;
+            self.syntax(TkTy::Ident)?;
         }
 
         self.syntax(TkTy::Abstraction)?;
@@ -134,7 +166,7 @@ impl Parser {
             Ok(atom)
         } else {
             let next_span = self.current()?.at;
-            self.syntax(TkTy::Variable)?;
+            self.syntax(TkTy::Ident)?;
             let node = Ast::Var.at(next_span);
             Ok(node)
         }

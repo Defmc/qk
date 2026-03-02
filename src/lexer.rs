@@ -62,8 +62,14 @@ pub enum TkTy {
     #[token(")")]
     RParen,
 
+    #[token("=")]
+    Assign,
+
     #[regex("[a-zA-Z]+")]
-    Variable,
+    Ident,
+
+    #[token("\n+")]
+    Sep,
 }
 
 impl TkTy {
