@@ -214,7 +214,7 @@ impl Repl {
             .collect();
         if self.show.on.contains(&"lexer") {
             let report = miette::MietteDiagnostic::new("lexer's output")
-                .with_labels(lexer.iter().map(|tk| {
+                .with_labels(lexer[..lexer.len() - 1].iter().map(|tk| {
                     miette::LabeledSpan::new_with_span(Some(format!("{:?}", tk.item)), tk.at)
                 }))
                 .with_severity(Severity::Advice);
