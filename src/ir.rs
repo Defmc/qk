@@ -10,7 +10,7 @@ pub type IrObj = Box<IrComponent>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Id(usize);
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum IrComponent {
     Var(Id),
     App(IrObj, IrObj),
@@ -53,11 +53,11 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 /// the first
 #[derive(Default)]
-pub struct Compiler {
+pub struct IrCompiler {
     scope: Scope,
 }
 
-impl Compiler {
+impl IrCompiler {
     pub fn compile(&mut self, ast: Node, src: &str) -> Result<IrObj> {
         match ast.item {
             Ast::Var => Ok(IrComponent::Var(self.scope.get(ast.from_code(src))).into()),
