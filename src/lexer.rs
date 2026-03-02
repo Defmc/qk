@@ -2,7 +2,7 @@ use logos::Logos;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Meta<T> {
     pub item: T,
     pub at: SourceSpan,
@@ -13,6 +13,21 @@ impl<T> Meta<T> {
         from_code(self.at, src)
     }
 }
+
+pub trait Trace
+where
+    Self: Sized,
+{
+    fn at(self, span: SourceSpan) -> Box<Meta<Self>> {
+        Meta {
+            item: self,
+            at: span,
+        }
+        .into()
+    }
+}
+
+impl<T> Trace for T {}
 
 pub fn from_code(s: SourceSpan, src: &str) -> &str {
     &src[s.offset()..s.offset() + s.len()]
@@ -81,7 +96,7 @@ impl TkTy {
                 let at = (s.start..=(s.end - 1)).into();
                 tk.map_or_else(
                     // TODO: use `_e` wiser.
-                    |_e| Err(Error::InvalidCharSeq { at }),
+                    |_e| Err(Error::InvalidCharSeq { at: at }),
                     |tk| Ok(Meta { item: tk, at }),
                 )
             })
