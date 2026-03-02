@@ -41,23 +41,17 @@ pub fn display_node(n: &Node) {
                 params,
                 body,
             } => {
-                print!("{}", span_str(ident));
+                print!("def @ {} (", span_str(ident));
                 params.iter().for_each(|p| print!(" {}", span_str(p)));
-                print!(" =");
+                println!(" ) =");
                 indented(body, depth);
             }
             Ast::App(l, r) => {
-                println!("⋅ @ {span}");
+                println!("app @ {span}");
                 indented(l, depth);
                 indented(r, depth);
             }
         }
     }
     indented(n, 0)
-}
-
-impl Ast {
-    pub fn at(self, at: SourceSpan) -> Node {
-        Meta { item: self, at }.into()
-    }
 }
