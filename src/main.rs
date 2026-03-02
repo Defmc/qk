@@ -221,11 +221,12 @@ impl Repl {
             self.report(report, input.to_string());
         }
 
-        let mut is_executable = false;
-
         let t = self.bench("parser", |_| {
             let mut p = Parser::new(lexer);
-            p.parse_app().or_else(move |_e| p.cleared().parse_program())
+            p.parse_app().or_else(move |_e| {
+                println!("switching to declarative context...");
+                p.cleared().parse_program()
+            })
         })?;
         if self.show.on.contains(&"parser") {
             qk::ast::display_node(&t);
