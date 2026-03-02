@@ -9,6 +9,12 @@ pub enum Ast {
     Abs(SourceSpan, Node),
     App(Node, Node),
     Var,
+    Def {
+        ident: SourceSpan,
+        params: Vec<SourceSpan>,
+        body: Node,
+    },
+    Program(Vec<Node>),
 }
 
 pub fn display_node(n: &Node) {
@@ -25,6 +31,20 @@ pub fn display_node(n: &Node) {
             Ast::Abs(v, inner) => {
                 println!("λ {} @ {span} ∈", span_str(v));
                 indented(inner, depth);
+            }
+            Ast::Program(p) => {
+                println!("exec");
+                p.iter().for_each(|p| indented(p, depth));
+            }
+            Ast::Def {
+                ident,
+                params,
+                body,
+            } => {
+                print!("{}", span_str(ident));
+                params.iter().for_each(|p| print!(" {}", span_str(p)));
+                print!(" =");
+                indented(body, depth);
             }
             Ast::App(l, r) => {
                 println!("⋅ @ {span}");
