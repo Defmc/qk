@@ -220,7 +220,13 @@ impl Repl {
                 .with_severity(Severity::Advice);
             self.report(report, input.to_string());
         }
-        let t = self.bench("parser", |_| Parser::new(lexer).parse_app())?;
+
+        let mut is_executable = false;
+
+        let t = self.bench("parser", |_| {
+            let mut p = Parser::new(lexer);
+            p.parse_app().or_else(move |_e| p.cleared().parse_program())
+        })?;
         if self.show.on.contains(&"parser") {
             qk::ast::display_node(&t);
         }

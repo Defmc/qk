@@ -38,6 +38,11 @@ pub struct Parser {
 }
 
 impl Parser {
+    pub fn cleared(mut self) -> Self {
+        self.idx = 0;
+        self
+    }
+
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, idx: 0 }
     }
