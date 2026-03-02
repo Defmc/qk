@@ -68,13 +68,16 @@ pub enum TkTy {
 
 impl TkTy {
     pub fn processed(s: &str) -> impl Iterator<Item = Result<Meta<TkTy>>> {
-        TkTy::lexer(s).spanned().map(|(tk, s)| {
-            let at = (s.start..=s.end).into();
-            tk.map_or_else(
-                // TODO: use `_e` wiser.
-                |_e| Err(Error::InvalidCharSeq { at }),
-                |tk| Ok(Meta { item: tk, at }),
-            )
-        })
+        TkTy::lexer(s)
+            .spanned()
+            .chain(std::iter::once((Ok(TkTy::Sep), 0..1)))
+            .map(|(tk, s)| {
+                let at = (s.start..=(s.end - 1)).into();
+                tk.map_or_else(
+                    // TODO: use `_e` wiser.
+                    |_e| Err(Error::InvalidCharSeq { at }),
+                    |tk| Ok(Meta { item: tk, at }),
+                )
+            })
     }
 }
