@@ -1,6 +1,6 @@
 use crate::{
     ast::{Ast, Node},
-    lexer::{self, TkTy, Token},
+    lexer::{self, TkTy, Token, Trace},
 };
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;

@@ -1,8 +1,10 @@
 use miette::{Diagnostic, NamedSource, Severity};
+use qk::compiler::CodeUnit;
 use qk::parser::Parser;
 use qk::{ir::IrCompiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use smallvec::{SmallVec, ToSmallVec};
+use std::io::empty;
 use std::{fmt::Write, time::Instant};
 use thiserror::Error;
 
@@ -240,21 +242,28 @@ impl Repl {
         }
 
         if matches!(t.item, qk::ast::Ast::Program(..)) {
-            self.run_executable(t, input)
-        } else {
             self.declare_code(t, input)
+        } else {
+            self.run_executable(t, input)
         }
-
-        // let compiled = self.bench("compiler", |_| qk::compiler::Compiler::compile(&t, input))?;
-        // if self.show.on.contains(&"compiler") {
-        //     println!("{compiled}");
-        // }
     }
 
     pub fn run_executable(&mut self, ast: qk::ast::Node, src: &str) -> Result<()> {
         let ir = self.bench("ir", |s| s.irc.compile(ast, src))?;
         if self.show.on.contains(&"ir") {
             println!("{ir:#?}")
+        }
+
+        let (cu_pool, compilation_id) =
+            self.bench("compiler", |s| match CodeUnit::new(&mut s.irc.scope, src) {
+                Err(e) => Result::Err(e.into()),
+                Ok(mut cu) => match cu.compile(&ir) {
+                    Ok(id) => Ok((cu.pool, id)),
+                    Err(e) => Result::Err(e.into()),
+                },
+            })?;
+        if self.show.on.contains(&"compiler") {
+            qk::compiler::print_pool(&cu_pool);
         }
         Ok(())
     }
@@ -306,6 +315,7 @@ impl Repl {
             errors: 0,
             bench: BENCH_SETTING.clone(),
             show: SHOW_SETTING.clone(),
+            irc: IrCompiler::default(),
         };
         Ok(s)
     }
