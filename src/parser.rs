@@ -102,7 +102,7 @@ impl Parser {
     }
 
     pub fn parse_step(&mut self) -> Result<Node> {
-        let ident = self.syntax(TkTy::Assign)?.at;
+        let ident = self.syntax(TkTy::Ident)?.at;
         let mut params = Vec::new();
         loop {
             match self.syntax(TkTy::Ident) {
@@ -151,12 +151,10 @@ impl Parser {
 
     pub fn parse_app(&mut self) -> Result<Node> {
         let mut l = self.parse_atom()?;
-        while let Ok(r) = self.parse_atom() {
+        while !self.check(|tk| tk.item == TkTy::Sep)? {
+            let r = self.parse_atom()?;
             let at = lexer::over(l.at, r.at);
             l = Ast::App(l, r).at(at);
-            if self.check(|tk| tk.item == TkTy::Sep)? {
-                break;
-            }
         }
         Ok(l)
     }
