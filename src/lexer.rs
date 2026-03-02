@@ -45,7 +45,7 @@ pub enum Error {
 }
 
 #[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[ \t\n\f]+", error = Error)]
+#[logos(skip r"[ \t\f]+", error = Error)]
 pub enum TkTy {
     #[token("\\")]
     #[token("λ")]

@@ -116,7 +116,10 @@ impl Parser {
         let mut l = self.parse_atom()?;
         while let Ok(r) = self.parse_atom() {
             let at = lexer::over(l.at, r.at);
-            l = Ast::App(l, r).at(at)
+            l = Ast::App(l, r).at(at);
+            if self.check(|tk| tk.item == TkTy::Sep)? {
+                break;
+            }
         }
         Ok(l)
     }
