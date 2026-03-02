@@ -10,8 +10,12 @@ pub struct Meta<T> {
 
 impl<T> Meta<T> {
     pub fn from_code<'a>(&self, src: &'a str) -> &'a str {
-        &src[self.at.offset()..self.at.offset() + self.at.len()]
+        from_code(self.at, src)
     }
+}
+
+pub fn from_code(s: SourceSpan, src: &str) -> &str {
+    &src[s.offset()..s.offset() + s.len()]
 }
 
 pub fn over(l: SourceSpan, r: SourceSpan) -> SourceSpan {
@@ -65,7 +69,7 @@ pub enum TkTy {
 impl TkTy {
     pub fn processed(s: &str) -> impl Iterator<Item = Result<Meta<TkTy>>> {
         TkTy::lexer(s).spanned().map(|(tk, s)| {
-            let at = SourceSpan::new(s.start.into(), s.end - s.start);
+            let at = (s.start..=s.end).into();
             tk.map_or_else(
                 // TODO: use `_e` wiser.
                 |_e| Err(Error::InvalidCharSeq { at }),

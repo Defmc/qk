@@ -50,11 +50,7 @@ impl Parser {
         self.tokens
             .get(self.idx + offset)
             .ok_or_else(|| Error::UnexpectedEof {
-                at: self
-                    .tokens
-                    .last()
-                    .map(|t| t.at)
-                    .unwrap_or(SourceSpan::new(0.into(), 0)),
+                at: self.tokens.last().map(|t| t.at).unwrap_or((0..=0).into()),
             })
     }
 
