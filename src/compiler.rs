@@ -1,75 +1,106 @@
-use std::collections::HashMap;
+use std::fmt;
 
-use crate::{
-    Body, Term,
-    ast::{Ast, Node},
-};
+use miette::{Diagnostic, SourceSpan};
+use thiserror::Error;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct VarId(usize);
+use crate::ast::{Ast, Node};
 
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TermIdx(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OuterIdx(usize);
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Term {
+    Var(OuterIdx),
+    Abs { inner: TermIdx },
+    App(TermIdx, TermIdx),
+}
+
+#[derive(Error, Debug, Diagnostic)]
+pub enum Error {
+    #[error("undeclared variable")]
+    #[diagnostic(
+        code(compiler::pool::undeclared_variable),
+        help("perhaps was a mistyping?")
+    )]
+    UndeclaredVariable {
+        #[label("this ident is unknown here")]
+        at: SourceSpan,
+    },
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, Default)]
 pub struct Compiler {
-    definitions: HashMap<String, VarId>,
-    var_counter: usize,
+    pub pool: Vec<Term>,
 }
 
-pub struct ScopeGuard<'a> {
-    shadowed: Option<VarId>,
-    compiler: &'a mut Compiler,
-    var_name: &'a str,
-    pub var_id: VarId,
-}
-
-impl<'a> ScopeGuard<'a> {
-    pub fn new(compiler: &'a mut Compiler, var_name: &'a str) -> Self {
-        let var_id = compiler.get_new_var();
-        let shadowed = if let Some(shadow) = compiler.definitions.get_mut(var_name) {
-            Some(std::mem::replace(shadow, var_id))
-        } else {
-            compiler.definitions.insert(var_name.to_string(), var_id);
-            None
-        };
-        Self {
-            shadowed,
-            compiler,
-            var_id,
-            var_name,
+impl fmt::Display for Compiler {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("[ ")?;
+        for (i, t) in self.pool.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            match t {
+                Term::Var(OuterIdx(idx)) => write!(f, "ν{idx}")?,
+                Term::Abs {
+                    inner: TermIdx(idx),
+                } => write!(f, "λ{idx}")?,
+                Term::App(TermIdx(l), TermIdx(r)) => write!(f, "{l}⋅{r}")?,
+            }
         }
-    }
-}
-
-impl<'a> Drop for ScopeGuard<'a> {
-    fn drop(&mut self) {
-        if let Some(shadow) = self.shadowed {
-            *self.compiler.definitions.get_mut(self.var_name).unwrap() = shadow;
-        } else {
-            self.compiler.definitions.remove(self.var_name);
-        }
+        f.write_str(" ]")?;
+        Ok(())
     }
 }
 
 impl Compiler {
-    pub fn compile(&mut self, ast: Node, src: &str) -> Term {
-        match ast.item {
+    pub fn compile(ast: &Node, src: &str) -> Result<Self> {
+        let mut s = Self::default();
+        let mut scopes = Vec::new();
+        s.compile_node(&mut scopes, ast, src)?;
+        Ok(s)
+    }
+
+    fn compile_node<'a>(
+        &mut self,
+        scopes: &mut Vec<&'a str>,
+        ast: &Node,
+        src: &'a str,
+    ) -> Result<TermIdx> {
+        match &ast.item {
             Ast::Var => {
-                let v = self
-                    .definitions
-                    .get(ast.from_code(src))
-                    .expect("variable not defined");
-                Body::Var(v.0).into()
+                let var_name = ast.from_code(src);
+                let (id, _) = scopes
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .find(|(_, s)| **s == var_name)
+                    .ok_or(Error::UndeclaredVariable { at: ast.at })?;
+                Ok(self.push(Term::Var(OuterIdx(id))))
             }
-            Ast::Abs(v, t) => {
-                let var_text = &src[v.offset()..v.offset() + v.len()];
-                let new_v = ScopeGuard::new(self, var_text);
-                Body::Abs(new_v.var_id.0, self.compile(t, src)).into()
+            Ast::Abs(v, inner) => {
+                let var_name = &src[v.offset()..v.offset() + v.len()];
+                scopes.push(var_name);
+                let inner = self.compile_node(scopes, inner, src)?;
+                scopes.pop();
+                Ok(self.push(Term::Abs { inner }))
             }
-            Ast::App(l, r) => Body::App(self.compile(l, src), self.compile(r, src)).into(),
+            Ast::App(l, r) => {
+                let l = self.compile_node(scopes, l, src)?;
+                let r = self.compile_node(scopes, r, src)?;
+                Ok(self.push(Term::App(l, r)))
+            }
+            _ => todo!(),
         }
     }
 
-    pub fn get_new_var(&mut self) -> VarId {
-        self.var_counter += 1;
-        VarId(self.var_counter - 1)
+    pub fn push(&mut self, t: Term) -> TermIdx {
+        self.pool.push(t);
+        TermIdx(self.pool.len() - 1)
     }
 }
