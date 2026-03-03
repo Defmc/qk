@@ -259,12 +259,14 @@ impl Scope {
     }
 
     pub fn id_to_str(id: &Id) -> String {
-        static CHARS: LazyLock<Vec<char>> = LazyLock::new(|| "bcxyzαβγΩω".chars().collect());
-
+        const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
+        static CHARS: LazyLock<Vec<char>> = LazyLock::new(|| ALPHABET.chars().collect());
+        let base = CHARS.len();
         let mut n = id.0 + 1;
         let mut s = String::new();
         while n > 0 {
-            s.push(CHARS[n % CHARS.len()]);
+            n -= 1;
+            s.push(CHARS[n % base]);
             n /= CHARS.len()
         }
         s
