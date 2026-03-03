@@ -25,7 +25,7 @@ pub const SHOW_SETTING: Setting = Setting {
 #[derive(Debug)]
 pub struct Runner {
     pub irc: IrCompiler,
-    pub shared_cache: CompArtifact,
+    pub art: CompArtifact,
     pub bench: Setting,
     pub show: Setting,
     pub warnings: usize,
@@ -36,21 +36,22 @@ impl Runner {
     pub fn new() -> Self {
         Self {
             irc: IrCompiler::default(),
-            shared_cache: CompArtifact::default(),
+            art: CompArtifact::default(),
             bench: BENCH_SETTING,
             show: SHOW_SETTING,
             warnings: 0,
             errors: 0,
         }
     }
-    pub fn expression(&mut self, input: &str) -> Result<()> {
-        let lexer: Vec<_> = self.bench("lexer", |_| TkTy::processed(input).collect());
+
+    pub fn lexer(&mut self, src: &str) -> Result<Vec<qk::lexer::Token>> {
+        let lexer: Vec<_> = self.bench("lexer", |_| TkTy::processed(src).collect());
         let lexer: Vec<_> = lexer
             .into_iter()
             .filter_map(|tk| match tk {
                 Ok(tk) => Some(tk),
                 Err(e) => {
-                    self.report(e, input.to_string());
+                    self.report(e, src.to_string());
                     None
                 }
             })
@@ -62,11 +63,15 @@ impl Runner {
                     miette::LabeledSpan::new_with_span(Some(format!("{:?}", tk.item)), tk.at)
                 }))
                 .with_severity(Severity::Advice);
-            self.report(report, input.to_string());
+            self.report(report, src.to_string());
         }
+        Ok(lexer)
+    }
 
+    pub fn parse(&mut self, lexer: Vec<qk::lexer::Token>, _src: &str) -> Result<qk::ast::Node> {
+        // TODO: This is not ideal. But since we don't have namespaces yet, it's the only way that
+        // declarations can exist
         let is_decl = lexer.iter().any(|t| t.item == TkTy::Assign);
-
         let t = self.bench("parser", |_| {
             let mut p = Parser::new(lexer);
             if is_decl {
@@ -75,43 +80,52 @@ impl Runner {
                 p.parse_app()
             }
         })?;
-
         if self.show.is_on("parser") {
             qk::ast::display_node(&t);
         }
-
-        if matches!(t.item, qk::ast::Ast::Program(..)) {
-            self.declare_code(t, input)
-        } else {
-            self.run_executable(t, input)
-        }
+        Ok(t)
     }
 
-    pub fn run_executable(&mut self, ast: qk::ast::Node, src: &str) -> Result<()> {
-        let ir = self.bench("ir", |s| s.irc.compile(ast, src))?;
-        if self.show.is_on("ir") {
-            println!("{ir:#?}")
-        }
+    pub fn ir(&mut self, ast: qk::ast::Node, src: &str) -> Result<Option<qk::ir::IrObj>> {
+        self.bench("ir", |s| -> Result<_> {
+            if matches!(ast.item, qk::ast::Ast::Program(..)) {
+                s.irc.compile_program(ast, src)?;
+                Ok(None)
+            } else {
+                Ok(Some(s.irc.compile(ast, src)?))
+            }
+        })
+    }
 
-        let (art, _entry_point) =
-            self.bench("compiler", |s| match CodeUnit::new(&mut s.irc.scope, src) {
-                Err(e) => Result::Err(e.into()),
-                Ok(mut cu) => match cu.compile(&ir) {
-                    Ok(id) => Ok((cu.art, id)),
-                    Err(e) => Result::Err(e.into()),
-                },
-            })?;
+    pub fn compile(&mut self, expr: qk::ir::IrObj, src: &str) -> Result<()> {
+        self.bench("compiler", |s| -> Result<()> {
+            let mut art = CompArtifact::default();
+            std::mem::swap(&mut art, &mut s.art);
+            let mut cu = CodeUnit::with_artifacts(&mut s.irc.scope, src, art)?;
+            cu.compile(&expr)?;
+            s.art = cu.art;
+            Ok(())
+        })?;
         if self.show.is_on("compiler") {
             let hp = HashMap::default();
-            println!("{}", art.to_string(&hp));
+            println!("{}", self.art.to_string(&hp));
         }
         Ok(())
     }
 
-    pub fn declare_code(&mut self, ast: qk::ast::Node, src: &str) -> Result<()> {
-        self.bench("ir", |s| s.irc.compile_program(ast, src))?;
+    pub fn expression(&mut self, input: &str) -> Result<()> {
+        let lexer = self.lexer(input)?;
+        let ast = self.parse(lexer, input)?;
+        let ir = self.ir(ast, input)?;
+        if let Some(expr) = ir {
+            if self.show.is_on("ir") {
+                println!("{expr:#?}")
+            }
+            self.compile(expr, input)?;
+        }
         Ok(())
     }
+
     pub fn bench<T>(&mut self, label: &str, f: impl FnOnce(&mut Self) -> T) -> T {
         if !self.bench.is_on(label) {
             return f(self);
