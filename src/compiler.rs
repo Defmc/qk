@@ -80,31 +80,6 @@ impl<'a> CodeUnit<'a> {
     }
 
     pub fn compile(&mut self, ir: &IrObj) -> Result<TermIdx> {
-        // match &ir.item {
-        //     Ast::Var => {
-        //         let var_name = ir.from_code(src);
-        //         let (id, _) = scopes
-        //             .iter()
-        //             .rev()
-        //             .enumerate()
-        //             .find(|(_, s)| **s == var_name)
-        //             .ok_or(Error::UndeclaredVariable { at: ir.at })?;
-        //         Ok(self.push(Term::Var(OuterIdx(id))))
-        //     }
-        //     Ast::Abs(v, inner) => {
-        //         let var_name = &src[v.offset()..v.offset() + v.len()];
-        //         scopes.push(var_name);
-        //         let inner = self.compile_node(scopes, inner, src)?;
-        //         scopes.pop();
-        //         Ok(self.push(Term::Abs { inner }))
-        //     }
-        //     Ast::App(l, r) => {
-        //         let l = self.compile_node(scopes, l, src)?;
-        //         let r = self.compile_node(scopes, r, src)?;
-        //         Ok(self.push(Term::App(l, r)))
-        //     }
-        //     _ => todo!(),
-        // }
         match &ir.item {
             IrComponent::Pending => {
                 unreachable!("`Scope::check_for_pendings` wasn't executed or is bugged")
