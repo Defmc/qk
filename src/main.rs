@@ -1,7 +1,5 @@
 use miette::{Diagnostic, NamedSource, Severity};
 use qk::compiler::CodeUnit;
-use qk::ir::IrComponent;
-use qk::lexer::Trace;
 use qk::parser::Parser;
 use qk::{ir::IrCompiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
@@ -102,7 +100,7 @@ fn context_cmd(r: &mut Repl, input: &str) -> Result<()> {
         if input.is_empty() || **k == *input {
             print!("{k} = ");
             r.irc.scope.pretty_print(&r.irc.scope.res_pool[v.0]);
-            println!("");
+            println!();
         }
     }
     Ok(())

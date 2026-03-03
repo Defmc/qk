@@ -193,7 +193,7 @@ impl Scope {
     /// it only means it hasn't been evaluated yet
     pub fn get_or_reserve(&mut self, s: &str) -> Result<Id> {
         if let Some(id) = self.definitions.get(s) {
-            return Ok(*id);
+            Ok(*id)
         } else {
             self.push(s.into(), IrComponent::Pending.at((0..=0).into()))
         }

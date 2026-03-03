@@ -96,7 +96,7 @@ impl TkTy {
                 let at = (s.start..=(s.end - 1)).into();
                 tk.map_or_else(
                     // TODO: use `_e` wiser.
-                    |_e| Err(Error::InvalidCharSeq { at: at }),
+                    |_e| Err(Error::InvalidCharSeq { at }),
                     |tk| Ok(Meta { item: tk, at }),
                 )
             })

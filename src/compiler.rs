@@ -1,12 +1,9 @@
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-use crate::{
-    ast::{Ast, Node},
-    ir::{self, IrComponent, IrObj, Scope},
-};
+use crate::ir::{self, IrComponent, IrObj, Scope};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TermIdx(usize);
