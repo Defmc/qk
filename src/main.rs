@@ -1,10 +1,11 @@
 use miette::{Diagnostic, NamedSource, Severity};
 use qk::compiler::CodeUnit;
+use qk::ir::IrComponent;
+use qk::lexer::Trace;
 use qk::parser::Parser;
 use qk::{ir::IrCompiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use smallvec::{SmallVec, ToSmallVec};
-use std::io::empty;
 use std::{fmt::Write, time::Instant};
 use thiserror::Error;
 
@@ -249,12 +250,15 @@ impl Repl {
             self.report(report, input.to_string());
         }
 
+        let is_decl = lexer.iter().any(|t| t.item == TkTy::Assign);
+
         let t = self.bench("parser", |_| {
             let mut p = Parser::new(lexer);
-            p.parse_app().or_else(move |_e| {
-                println!("switching to declarative context...");
-                p.cleared().parse_program()
-            })
+            if is_decl {
+                p.parse_program()
+            } else {
+                p.parse_app()
+            }
         })?;
 
         if self.show.on.contains(&"parser") {

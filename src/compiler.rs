@@ -138,9 +138,7 @@ impl<'a> CodeUnit<'a> {
                 }
                 _ => unreachable!(),
             },
-            IrComponent::Def { .. } => unreachable!(
-                "`IrComponent::Def` should be a guard over a definition, not a IrC output"
-            ),
+            IrComponent::Def(obj) => self.compile(obj),
         }
     }
 

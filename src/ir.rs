@@ -205,4 +205,64 @@ impl Scope {
         }
         Ok(())
     }
+
+    pub fn pretty_print(&self, ir: &IrObj) {
+        let mut binding_stack = Vec::new();
+        let aliases = self.get_aliases();
+        self.buff_pretty_print(&aliases, &mut binding_stack, ir);
+    }
+
+    pub fn get_aliases(&self) -> HashMap<Id, Box<str>> {
+        self.definitions
+            .iter()
+            .map(|(l, r)| (*r, l.clone()))
+            .collect()
+    }
+
+    pub fn buff_pretty_print(
+        &self,
+        aliases: &HashMap<Id, Box<str>>,
+        binding_stack: &mut Vec<Id>,
+        ir: &IrObj,
+    ) {
+        match &ir.item {
+            IrComponent::Pending => print!("..."),
+            IrComponent::Binding => {
+                unreachable!()
+            }
+            IrComponent::Def(def) => self.buff_pretty_print(aliases, binding_stack, def),
+            IrComponent::Var(id) => {
+                if let Some(alias) = aliases.get(id) {
+                    print!("{alias}")
+                } else if let Some(v) = binding_stack.iter().find(|i| id == *i) {
+                    print!("{}", Self::id_to_str(v));
+                } else {
+                    self.buff_pretty_print(aliases, binding_stack, &self.res_pool[id.0])
+                }
+            }
+            IrComponent::App(l, r) => {
+                self.buff_pretty_print(aliases, binding_stack, l);
+                self.buff_pretty_print(aliases, binding_stack, r);
+            }
+            IrComponent::Abs(v, inner) => {
+                binding_stack.push(*v);
+                let id_str = Self::id_to_str(v);
+                print!("λ{id_str}.");
+                self.buff_pretty_print(aliases, binding_stack, inner);
+                binding_stack.pop();
+            }
+        }
+    }
+
+    pub fn id_to_str(id: &Id) -> String {
+        static CHARS: LazyLock<Vec<char>> = LazyLock::new(|| "bcxyzαβγΩω".chars().collect());
+
+        let mut n = id.0 + 1;
+        let mut s = String::new();
+        while n > 0 {
+            s.push(CHARS[n % CHARS.len()]);
+            n /= CHARS.len()
+        }
+        s
+    }
 }
