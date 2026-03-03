@@ -93,6 +93,20 @@ fn set_cmd(r: &mut Repl, input: &str) -> Result<()> {
     Ok(())
 }
 
+fn context_cmd(r: &mut Repl, input: &str) -> Result<()> {
+    println!("context's size: {}", r.irc.scope.definitions.len());
+    println!("scope: {:#?}", r.irc.scope);
+    println!("resources used: {}", r.irc.scope.res_pool.len());
+    for (k, v) in r.irc.scope.definitions.iter() {
+        if input.is_empty() || **k == *input {
+            print!("{k} = ");
+            r.irc.scope.pretty_print(&r.irc.scope.res_pool[v.0]);
+            println!("");
+        }
+    }
+    Ok(())
+}
+
 pub const COMMANDS: &[Command] = &[
     Command {
         cmd: "quit",
@@ -105,6 +119,12 @@ pub const COMMANDS: &[Command] = &[
         alias: "s",
         desc: "manual settings",
         func: set_cmd,
+    },
+    Command {
+        cmd: "context",
+        alias: "c",
+        desc: "show all the current context",
+        func: context_cmd,
     },
 ];
 
