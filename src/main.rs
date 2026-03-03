@@ -4,6 +4,7 @@ use qk::parser::Parser;
 use qk::{ir::IrCompiler, lexer::TkTy};
 use rustyline::{DefaultEditor, error::ReadlineError};
 use smallvec::{SmallVec, ToSmallVec};
+use std::collections::HashMap;
 use std::{fmt::Write, time::Instant};
 use thiserror::Error;
 
@@ -276,16 +277,17 @@ impl Repl {
             println!("{ir:#?}")
         }
 
-        let (cu_pool, _compilation_id) =
+        let (art, entry_point) =
             self.bench("compiler", |s| match CodeUnit::new(&mut s.irc.scope, src) {
                 Err(e) => Result::Err(e.into()),
                 Ok(mut cu) => match cu.compile(&ir) {
-                    Ok(id) => Ok((cu.pool, id)),
+                    Ok(id) => Ok((cu.art, id)),
                     Err(e) => Result::Err(e.into()),
                 },
             })?;
         if self.show.on.contains(&"compiler") {
-            qk::compiler::print_pool(&cu_pool);
+            let hp = HashMap::default();
+            println!("{}", art.to_string(&hp));
         }
         Ok(())
     }

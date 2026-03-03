@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::fmt::Write;
+use std::{collections::HashMap, fmt};
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
@@ -37,40 +38,84 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
-pub struct CodeUnit<'a> {
-    pub pool: Vec<Term>,
-    pub scope: &'a Scope,
-    pub src: &'a str,
+#[derive(Default, Debug)]
+pub struct CompArtifact {
+    arena: Vec<Term>,
     pub obj_cache: HashMap<ir::Id, TermIdx>,
-    pub layer_stack: Vec<ir::Id>,
 }
 
-pub fn print_pool(pool: &[Term]) {
-    print!("[ ");
-    for (i, t) in pool.iter().enumerate() {
-        if i > 0 {
-            print!(", ");
-        }
-        match t {
-            Term::Var(OuterIdx(idx)) => print!("ν{idx}"),
-            Term::Abs {
-                inner: TermIdx(idx),
-            } => print!("λ{idx}"),
-            Term::App(TermIdx(l), TermIdx(r)) => print!("{l}⋅{r}"),
-        }
+impl CompArtifact {
+    pub fn arena(&self) -> &[Term] {
+        &self.arena
     }
-    print!(" ]");
+
+    pub fn arena_to_string(&self) -> String {
+        let mut s = String::new();
+        s.push_str("[ ");
+        for (i, t) in self.arena.iter().enumerate() {
+            if i > 0 {
+                s.push_str(", ");
+            }
+            let _ = match t {
+                Term::Var(OuterIdx(idx)) => write!(s, "[{i}]=ν{idx}"),
+                Term::Abs {
+                    inner: TermIdx(idx),
+                } => write!(s, " [{i}]=λ{idx}"),
+                Term::App(TermIdx(l), TermIdx(r)) => write!(s, "[{i}]={l}⋅{r}"),
+            };
+        }
+        s.push_str("]");
+        s
+    }
+
+    pub fn obj_cache_to_string(&self, aliases: &HashMap<ir::Id, Box<str>>) -> String {
+        let mut s = String::new();
+        let use_alias = !aliases.is_empty();
+        s.push_str("{ ");
+        for (i, (id, term_idx)) in self.obj_cache.iter().enumerate() {
+            if i > 0 {
+                s.push_str(", ");
+            }
+            s.push(' ');
+            if let Some(Some(name)) = use_alias.then(|| aliases.get(&id)) {
+                s.push_str(name)
+            } else {
+                let _ = write!(s, "{}", id.0);
+            }
+            let _ = write!(s, " => {}", term_idx.0);
+        }
+        s.push_str("}");
+        s
+    }
+
+    pub fn to_string(&self, aliases: &HashMap<ir::Id, Box<str>>) -> String {
+        format!(
+            "arena: {} | cache: {}",
+            self.arena_to_string(),
+            self.obj_cache_to_string(aliases)
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct CodeUnit<'a> {
+    pub scope: &'a Scope,
+    pub src: &'a str,
+    pub art: CompArtifact,
+    pub layer_stack: Vec<ir::Id>,
 }
 
 impl<'a> CodeUnit<'a> {
     pub fn new(scope: &'a mut Scope, src: &'a str) -> Result<Self> {
+        Self::with_artifacts(scope, src, CompArtifact::default())
+    }
+
+    pub fn with_artifacts(scope: &'a mut Scope, src: &'a str, art: CompArtifact) -> Result<Self> {
         scope.check_for_pendings()?;
         let s = Self {
-            pool: Vec::new(),
+            art,
             scope,
             src,
-            obj_cache: HashMap::new(),
             layer_stack: Vec::new(),
         };
         Ok(s)
@@ -115,18 +160,18 @@ impl<'a> CodeUnit<'a> {
     }
 
     pub fn compile_resource(&mut self, res_id: ir::Id) -> Result<TermIdx> {
-        if let Some(idx) = self.obj_cache.get(&res_id) {
+        if let Some(idx) = self.art.obj_cache.get(&res_id) {
             Ok(*idx)
         } else {
             let res = &self.scope.res_pool[res_id.0];
             let compiled = self.compile(res)?;
-            self.obj_cache.insert(res_id, compiled);
+            self.art.obj_cache.insert(res_id, compiled);
             Ok(compiled)
         }
     }
 
     pub fn push(&mut self, t: Term) -> TermIdx {
-        self.pool.push(t);
-        TermIdx(self.pool.len() - 1)
+        self.art.arena.push(t);
+        TermIdx(self.art.arena.len() - 1)
     }
 }
