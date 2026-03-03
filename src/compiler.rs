@@ -43,7 +43,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub struct CodeUnit<'a> {
     pub pool: Vec<Term>,
-    pub scope: &'a mut Scope,
+    pub scope: &'a Scope,
     pub src: &'a str,
     pub obj_cache: HashMap<ir::Id, TermIdx>,
     pub layer_stack: Vec<ir::Id>,
@@ -121,9 +121,8 @@ impl<'a> CodeUnit<'a> {
         if let Some(idx) = self.obj_cache.get(&res_id) {
             Ok(*idx)
         } else {
-            // TODO remove this clone
-            let res = self.scope.res_pool[res_id.0].clone();
-            let compiled = self.compile(&res)?;
+            let res = &self.scope.res_pool[res_id.0];
+            let compiled = self.compile(res)?;
             self.obj_cache.insert(res_id, compiled);
             Ok(compiled)
         }
