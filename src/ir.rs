@@ -1,4 +1,7 @@
-use std::collections::{HashMap, hash_map::Entry};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    sync::LazyLock,
+};
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
@@ -137,6 +140,7 @@ impl IrCompiler {
             std::mem::swap(&mut new_id, old_id);
             Some(new_id)
         } else {
+            self.scope.definitions.insert(name.into(), id);
             None
         };
         let r = f(self, id);
