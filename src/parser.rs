@@ -32,6 +32,7 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug)]
 pub struct Parser {
     pub tokens: Vec<Token>,
     pub idx: usize,
@@ -125,16 +126,12 @@ impl Parser {
     pub fn parse_abs(&mut self) -> Result<Node> {
         self.syntax(TkTy::Function)?;
 
-        let mut params = Vec::new();
+        let mut params = vec![self.syntax(TkTy::Ident)?.at];
 
         while self.current()?.item == TkTy::Ident {
             let var_span = self.current()?.at;
             self.idx += 1;
             params.push(var_span);
-        }
-
-        if params.is_empty() {
-            self.syntax(TkTy::Ident)?;
         }
 
         self.syntax(TkTy::Abstraction)?;
@@ -151,12 +148,16 @@ impl Parser {
 
     pub fn parse_app(&mut self) -> Result<Node> {
         let mut l = self.parse_atom()?;
-        while !self.check(|tk| tk.item == TkTy::Sep)? {
+        while !self.is_eof() && !self.check(|tk| tk.item == TkTy::Sep)? {
             let r = self.parse_atom()?;
             let at = lexer::over(l.at, r.at);
             l = Ast::App(l, r).at(at);
         }
         Ok(l)
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.idx >= self.tokens.len()
     }
 
     pub fn parse_atom(&mut self) -> Result<Node> {
@@ -168,9 +169,8 @@ impl Parser {
             self.syntax(TkTy::RParen)?;
             Ok(atom)
         } else {
-            let next_span = self.current()?.at;
-            self.syntax(TkTy::Ident)?;
-            let node = Ast::Var.at(next_span);
+            let ident = self.syntax(TkTy::Ident)?;
+            let node = Ast::Var.at(ident.at);
             Ok(node)
         }
     }
