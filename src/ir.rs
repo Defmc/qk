@@ -112,9 +112,9 @@ impl IrCompiler {
                             .into()
                         });
                         let inner = self.compile(reorganized_abs, src)?;
-                        let obj = IrComponent::Def(inner).at(ast.at);
+                        let obj = IrComponent::Def(inner).at(step.at);
                         self.scope
-                            .push(crate::lexer::from_code(ident, src).into(), obj);
+                            .push(crate::lexer::from_code(ident, src).into(), obj)?;
                     }
                     Ast::Program(..) => unreachable!(),
                 }
