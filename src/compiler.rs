@@ -42,6 +42,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct CompArtifact {
     arena: Vec<Term>,
     pub obj_cache: HashMap<ir::Id, TermIdx>,
+    pub root: Option<TermIdx>,
 }
 
 impl CompArtifact {
@@ -51,7 +52,7 @@ impl CompArtifact {
 
     pub fn arena_to_string(&self) -> String {
         let mut s = String::new();
-        s.push_str("[ ");
+        s.push_str("[");
         for (i, t) in self.arena.iter().enumerate() {
             if i > 0 {
                 s.push_str(", ");
@@ -121,7 +122,13 @@ impl<'a> CodeUnit<'a> {
         Ok(s)
     }
 
-    pub fn compile(&mut self, ir: &IrObj) -> Result<TermIdx> {
+    pub fn compile(&mut self, ir: &IrObj) -> Result<()> {
+        let idx = self.compile_node(ir)?;
+        self.art.root = Some(idx);
+        Ok(())
+    }
+
+    pub fn compile_node(&mut self, ir: &IrObj) -> Result<TermIdx> {
         match &ir.item {
             IrComponent::Pending => {
                 unreachable!("`Scope::check_for_pendings` wasn't executed or is bugged")
@@ -131,13 +138,13 @@ impl<'a> CodeUnit<'a> {
             }
             IrComponent::Abs(id, body) => {
                 self.layer_stack.push(*id);
-                let inner = self.compile(body)?;
+                let inner = self.compile_node(body)?;
                 self.layer_stack.pop();
                 Ok(self.push(Term::Abs { inner }))
             }
             IrComponent::App(l, r) => {
-                let l = self.compile(l)?;
-                let r = self.compile(r)?;
+                let l = self.compile_node(l)?;
+                let r = self.compile_node(r)?;
                 Ok(self.push(Term::App(l, r)))
             }
             IrComponent::Var(id) => match &self.scope.res_pool[id.0].item {
@@ -155,7 +162,7 @@ impl<'a> CodeUnit<'a> {
                 }
                 _ => unreachable!(),
             },
-            IrComponent::Def(obj) => self.compile(obj),
+            IrComponent::Def(obj) => self.compile_node(obj),
         }
     }
 
@@ -164,7 +171,7 @@ impl<'a> CodeUnit<'a> {
             Ok(*idx)
         } else {
             let res = &self.scope.res_pool[res_id.0];
-            let compiled = self.compile(res)?;
+            let compiled = self.compile_node(res)?;
             self.art.obj_cache.insert(res_id, compiled);
             Ok(compiled)
         }
