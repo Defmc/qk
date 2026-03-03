@@ -57,21 +57,21 @@ impl CompArtifact {
                 s.push_str(", ");
             }
             let _ = match t {
-                Term::Var(OuterIdx(idx)) => write!(s, "[{i}]=ν{idx}"),
+                Term::Var(OuterIdx(idx)) => write!(s, " [{i}]=ν{idx}"),
                 Term::Abs {
                     inner: TermIdx(idx),
                 } => write!(s, " [{i}]=λ{idx}"),
-                Term::App(TermIdx(l), TermIdx(r)) => write!(s, "[{i}]={l}⋅{r}"),
+                Term::App(TermIdx(l), TermIdx(r)) => write!(s, " [{i}]={l}⋅{r}"),
             };
         }
-        s.push_str("]");
+        s.push_str(" ]");
         s
     }
 
     pub fn obj_cache_to_string(&self, aliases: &HashMap<ir::Id, Box<str>>) -> String {
         let mut s = String::new();
         let use_alias = !aliases.is_empty();
-        s.push_str("{ ");
+        s.push_str("{");
         for (i, (id, term_idx)) in self.obj_cache.iter().enumerate() {
             if i > 0 {
                 s.push_str(", ");
@@ -84,7 +84,7 @@ impl CompArtifact {
             }
             let _ = write!(s, " => {}", term_idx.0);
         }
-        s.push_str("}");
+        s.push_str(" }");
         s
     }
 
