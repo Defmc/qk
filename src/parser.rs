@@ -77,7 +77,7 @@ impl Parser {
         let peek = self.current()?;
         if peek.item == tk {
             self.idx += 1;
-            Ok(self.current()?)
+            Ok(&self.tokens[self.idx - 1])
         } else {
             Err(Error::UnexpectedToken {
                 exp: tk,
