@@ -278,7 +278,7 @@ impl Repl {
             println!("{ir:#?}")
         }
 
-        let (cu_pool, compilation_id) =
+        let (cu_pool, _compilation_id) =
             self.bench("compiler", |s| match CodeUnit::new(&mut s.irc.scope, src) {
                 Err(e) => Result::Err(e.into()),
                 Ok(mut cu) => match cu.compile(&ir) {
@@ -293,10 +293,7 @@ impl Repl {
     }
 
     pub fn declare_code(&mut self, ast: qk::ast::Node, src: &str) -> Result<()> {
-        let ir = self.bench("ir", |s| s.irc.compile_program(ast, src))?;
-        if self.show.on.contains(&"ir") {
-            println!("{ir:#?}")
-        }
+        self.bench("ir", |s| s.irc.compile_program(ast, src))?;
         Ok(())
     }
 
