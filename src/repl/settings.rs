@@ -1,12 +1,16 @@
 use smallvec::{SmallVec, ToSmallVec};
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct Setting {
     pub all: &'static [&'static str],
     pub on: SmallVec<[&'static str; 8]>,
 }
 
 impl Setting {
+    pub fn is_on(&self, setting: &str) -> bool {
+        self.on.contains(&setting)
+    }
+
     pub fn parse_inspired<'a>(&self, value: &'a str) -> std::result::Result<Self, &'a str> {
         if value == "all" {
             return Ok(Setting {
@@ -15,7 +19,7 @@ impl Setting {
             });
         }
         let mut s = Self::default();
-        for v in value.split(',') {
+        for v in value.split_whitespace() {
             let trimmed = v.trim();
             if let Some(set) = self.all.iter().find(|&&a_v| a_v == trimmed) {
                 s.on.push(set);

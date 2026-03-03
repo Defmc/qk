@@ -26,12 +26,12 @@ fn set_cmd(r: &mut Repl, input: &str) -> Result<()> {
     match setting {
         "prompt" => set(&mut r.prompt, "prompt", value)?,
         "bench" => {
-            r.bench = crate::repl::runner::BENCH_SETTING
+            r.runner.bench = crate::repl::runner::BENCH_SETTING
                 .parse_inspired(value)
                 .map_err(|v| Error::InvalidValue(setting.to_string(), v.to_string()))?
         }
         "show" => {
-            r.show = crate::repl::runner::SHOW_SETTING
+            r.runner.show = crate::repl::runner::SHOW_SETTING
                 .parse_inspired(value)
                 .map_err(|v| Error::InvalidValue(setting.to_string(), v.to_string()))?
         }
@@ -41,13 +41,16 @@ fn set_cmd(r: &mut Repl, input: &str) -> Result<()> {
 }
 
 fn context_cmd(r: &mut Repl, input: &str) -> Result<()> {
-    println!("context's size: {}", r.irc.scope.definitions.len());
-    println!("scope: {:#?}", r.irc.scope);
-    println!("resources used: {}", r.irc.scope.res_pool.len());
-    for (k, v) in r.irc.scope.definitions.iter() {
+    println!("context's size: {}", r.runner.irc.scope.definitions.len());
+    println!("scope: {:#?}", r.runner.irc.scope);
+    println!("resources used: {}", r.runner.irc.scope.res_pool.len());
+    for (k, v) in r.runner.irc.scope.definitions.iter() {
         if input.is_empty() || **k == *input {
             print!("{k} = ");
-            r.irc.scope.pretty_print(&r.irc.scope.res_pool[v.0]);
+            r.runner
+                .irc
+                .scope
+                .pretty_print(&r.runner.irc.scope.res_pool[v.0]);
             println!();
         }
     }
