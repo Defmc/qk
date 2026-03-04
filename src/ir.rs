@@ -195,7 +195,7 @@ impl Scope {
         if let Some(id) = self.definitions.get(s) {
             Ok(*id)
         } else {
-            self.push(s.into(), IrComponent::Pending.at((0..=0).into()))
+            self.push(s.into(), IrComponent::Pending.generated())
         }
     }
 

@@ -25,6 +25,11 @@ where
         }
         .into()
     }
+
+    fn generated(self) -> Box<Meta<Self>> {
+        const GENERATED_RANGE: std::ops::RangeInclusive<usize> = 0..=0;
+        self.at(GENERATED_RANGE.into())
+    }
 }
 
 impl<T> Trace for T {}
