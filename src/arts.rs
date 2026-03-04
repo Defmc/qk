@@ -61,6 +61,8 @@ impl CompArtifact {
         for (i, (id, term_idx)) in self.obj_cache.iter().enumerate() {
             if i > 0 {
                 s.push_str(", ");
+            } else {
+                s.push(' ');
             }
             if let Some(Some(name)) = use_alias.then(|| aliases.get(&id)) {
                 s.push_str(name)
@@ -75,9 +77,13 @@ impl CompArtifact {
 
     pub fn to_string(&self, aliases: &HashMap<ir::Id, Box<str>>) -> String {
         format!(
-            "arena: {} | cache: {}",
+            "arena: {} | cache: {} | {}",
             self.arena_to_string(),
-            self.obj_cache_to_string(aliases)
+            self.obj_cache_to_string(aliases),
+            match self.root {
+                Some(r) => format!("root: {}", r.0),
+                None => "lib".into(),
+            }
         )
     }
     pub fn push(&mut self, t: Term) -> TermIdx {
