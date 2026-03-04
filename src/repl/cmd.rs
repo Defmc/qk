@@ -5,7 +5,7 @@ pub struct Command<'a> {
     pub cmd: &'a str,
     pub desc: &'a str,
     pub alias: &'a str,
-    pub func: fn(&mut Repl, &str) -> Result<()>,
+    pub func: &'a dyn Fn(&mut Repl, &str) -> Result<()>,
 }
 
 fn quit_cmd(_r: &mut Repl, _input: &str) -> Result<()> {
@@ -77,7 +77,9 @@ pub const COMMANDS: &[Command] = &[
         cmd: "quit",
         alias: "q",
         desc: "quits the terminal",
-        func: quit_cmd,
+        func: &|_r: &mut Repl, _input: &str| -> Result<()> {
+            std::process::exit(0);
+        },
     },
     Command {
         cmd: "set",
@@ -89,7 +91,19 @@ pub const COMMANDS: &[Command] = &[
         cmd: "context",
         alias: "ctx",
         desc: "show all the current context",
-        func: context_cmd,
+        func: &|r: &mut Repl, input: &str| -> Result<()> {
+            for (k, v) in r.runner.irc.scope.definitions.iter() {
+                if input.is_empty() || **k == *input {
+                    print!("{k} = ");
+                    r.runner
+                        .irc
+                        .scope
+                        .pretty_print(&r.runner.irc.scope.res_pool[v.0]);
+                    println!();
+                }
+            }
+            Ok(())
+        },
     },
     Command {
         cmd: "res",
