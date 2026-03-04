@@ -1,4 +1,5 @@
-use crate::ir;
+use crate::ir::{self, IrComponent, IrObj, Scope};
+use crate::lexer::Trace;
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -83,5 +84,42 @@ impl CompArtifact {
         let idx = self.arena.len();
         self.arena.push(t);
         TermIdx(idx)
+    }
+
+    pub fn get(&self, i: TermIdx) -> Term {
+        self.arena[i.0].clone()
+    }
+
+    pub fn back_to_ir(&self, idx: TermIdx) -> (IrObj, Scope) {
+        let mut bindings = Vec::new();
+        let mut scope = Scope::default();
+        let r = self.back_to_ir_inner(idx, &mut bindings, &mut scope);
+        (r, scope)
+    }
+
+    fn back_to_ir_inner(
+        &self,
+        idx: TermIdx,
+        bindings: &mut Vec<ir::Id>,
+        scope: &mut Scope,
+    ) -> IrObj {
+        match self.get(idx) {
+            Term::App(l, r) => IrComponent::App(
+                self.back_to_ir_inner(l, bindings, scope),
+                self.back_to_ir_inner(r, bindings, scope),
+            )
+            .generated(),
+            Term::Var(outer_idx) => {
+                IrComponent::Var(bindings[bindings.len() - outer_idx.0 - 1]).generated()
+            }
+            Term::Abs { inner } => {
+                let bind = scope.push_res(IrComponent::Binding.generated());
+                bindings.push(bind);
+                let abs = IrComponent::Abs(bind, self.back_to_ir_inner(inner, bindings, scope))
+                    .generated();
+                bindings.pop();
+                abs
+            }
+        }
     }
 }
