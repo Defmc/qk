@@ -246,8 +246,16 @@ impl Scope {
                 }
             }
             IrComponent::App(l, r) => {
+                let r_is_app = matches!(r.item, IrComponent::App(..));
+                if r_is_app {
+                    print!("(");
+                }
                 self.buff_pretty_print(aliases, binding_stack, l);
+                print!(" ");
                 self.buff_pretty_print(aliases, binding_stack, r);
+                if r_is_app {
+                    print!(")");
+                }
             }
             IrComponent::Abs(v, inner) => {
                 binding_stack.push(*v);
