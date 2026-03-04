@@ -132,4 +132,13 @@ pub const COMMANDS: &[Command] = &[
             Err(Error::InvalidValue("help".into(), name.into()))
         },
     },
+    Command {
+        cmd: "clear",
+        alias: "cls",
+        desc: "Clear all the `runner` configuration",
+        func: &|r: &mut Repl, _s: &str| -> Result<()> {
+            r.runner = crate::repl::runner::Runner::new();
+            Ok(())
+        },
+    },
 ];
