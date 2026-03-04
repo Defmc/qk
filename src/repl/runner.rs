@@ -1,12 +1,8 @@
 use std::{collections::HashMap, time::Instant};
 
 use miette::{Diagnostic, NamedSource, Severity};
-use qk::{
-    compiler::{CodeUnit, CompArtifact},
-    ir::IrCompiler,
-    lexer::TkTy,
-    parser::Parser,
-};
+use qk::arts::CompArtifact;
+use qk::{compiler::CodeUnit, ir::IrCompiler, lexer::TkTy, parser::Parser};
 use smallvec::SmallVec;
 
 use crate::repl::Result;

@@ -102,7 +102,7 @@ pub const COMMANDS: &[Command] = &[
             println!("\tresources entries: {}", scope.res_pool.len());
 
             let (size, suffix) =
-                human_size(scope.res_pool.len() * std::mem::size_of::<qk::compiler::Term>());
+                human_size(scope.res_pool.len() * std::mem::size_of::<qk::arts::Term>());
             println!("\tresources size: {size:.2}{suffix}",);
             Ok(())
         },
