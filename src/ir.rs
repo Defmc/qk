@@ -214,6 +214,7 @@ impl Scope {
         let mut binding_stack = Vec::new();
         let aliases = self.get_aliases();
         self.buff_pretty_print(&aliases, &mut binding_stack, ir);
+        println!();
     }
 
     pub fn get_aliases(&self) -> HashMap<Id, Box<str>> {
