@@ -2,6 +2,7 @@ use std::{collections::HashMap, time::Instant};
 
 use miette::{Diagnostic, NamedSource, Severity};
 use qk::arts::CompArtifact;
+use qk::cpu::{self, Cpu, Reductor};
 use qk::{compiler::CodeUnit, ir::IrCompiler, lexer::TkTy, parser::Parser};
 use smallvec::SmallVec;
 
@@ -9,12 +10,16 @@ use crate::repl::Result;
 use crate::repl::settings::Setting;
 
 pub const BENCH_SETTING: Setting = Setting {
-    all: &["lexer", "parser", "command", "ir", "compiler"],
+    all: &[
+        "lexer", "parser", "command", "ir", "compiler", "steps", "normal",
+    ],
     on: SmallVec::new_const(),
 };
 
 pub const SHOW_SETTING: Setting = Setting {
-    all: &["lexer", "parser", "command", "ir", "compiler"],
+    all: &[
+        "lexer", "parser", "command", "ir", "compiler", "steps", "normal",
+    ],
     on: SmallVec::new_const(),
 };
 
@@ -109,6 +114,36 @@ impl Runner {
         Ok(())
     }
 
+    pub fn cpu(&mut self) -> Result<()> {
+        let mut root = self.art.root.unwrap();
+        self.bench("normal", |s| {
+            let mut art = CompArtifact::default();
+            std::mem::swap(&mut art, &mut s.art);
+            let mut cpu = Cpu::new(art);
+            loop {
+                if s.show.is_on("steps") {
+                    let (obj, scope) = cpu.art.back_to_ir(root);
+                    scope.pretty_print(&obj);
+                }
+                let op = s.bench("steps", |_| qk::cpu::Normal::step(&mut cpu, root));
+                match op {
+                    cpu::Op::Normal => {
+                        if s.show.is_on("normal") {
+                            let (obj, scope) = cpu.art.back_to_ir(root);
+                            scope.pretty_print(&obj);
+                        }
+                        break;
+                    }
+                    cpu::Op::Effect(..) => todo!(),
+                    cpu::Op::Reduced(idx) => {
+                        root = idx;
+                    }
+                }
+            }
+        });
+        Ok(())
+    }
+
     pub fn expression(&mut self, input: &str) -> Result<()> {
         let lexer = self.lexer(input)?;
         let ast = self.parse(lexer, input)?;
@@ -118,6 +153,10 @@ impl Runner {
                 println!("{expr:#?}")
             }
             self.compile(expr, input)?;
+
+            self.cpu()?;
+        } else {
+            println!("program finished");
         }
         Ok(())
     }
