@@ -41,9 +41,6 @@ fn set_cmd(r: &mut Repl, input: &str) -> Result<()> {
 }
 
 fn context_cmd(r: &mut Repl, input: &str) -> Result<()> {
-    println!("context's size: {}", r.runner.irc.scope.definitions.len());
-    println!("scope: {:#?}", r.runner.irc.scope);
-    println!("resources used: {}", r.runner.irc.scope.res_pool.len());
     for (k, v) in r.runner.irc.scope.definitions.iter() {
         if input.is_empty() || **k == *input {
             print!("{k} = ");
@@ -52,6 +49,24 @@ fn context_cmd(r: &mut Repl, input: &str) -> Result<()> {
                 .scope
                 .pretty_print(&r.runner.irc.scope.res_pool[v.0]);
             println!();
+        }
+    }
+    Ok(())
+}
+
+fn res_cmd(r: &mut Repl, _input: &str) -> Result<()> {
+    println!("context's size: {}", r.runner.irc.scope.definitions.len());
+    println!("resources used: {}", r.runner.irc.scope.res_pool.len());
+    Ok(())
+}
+
+fn help_cmd(_r: &mut Repl, name: &str) -> Result<()> {
+    for cmd in COMMANDS {
+        if cmd.matches(name) {
+            println!("{} (alias {})", cmd.cmd, cmd.alias);
+            println!("\t{}", cmd.desc);
+
+            break;
         }
     }
     Ok(())
@@ -72,8 +87,14 @@ pub const COMMANDS: &[Command] = &[
     },
     Command {
         cmd: "context",
-        alias: "c",
+        alias: "ctx",
         desc: "show all the current context",
         func: context_cmd,
+    },
+    Command {
+        cmd: "res",
+        alias: "r",
+        desc: "show how many resources are being used",
+        func: res_cmd,
     },
 ];
