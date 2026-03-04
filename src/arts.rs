@@ -61,7 +61,6 @@ impl CompArtifact {
             if i > 0 {
                 s.push_str(", ");
             }
-            s.push(' ');
             if let Some(Some(name)) = use_alias.then(|| aliases.get(&id)) {
                 s.push_str(name)
             } else {
