@@ -93,7 +93,7 @@ impl Reductor for Normal {
             Term::App(l, r) => {
                 let l_step = Self::step(c, l);
                 if l_step == Op::Normal
-                    && let Term::Abs { inner } = c.art.get(idx)
+                    && let Term::Abs { inner } = c.art.get(l)
                 {
                     Op::Reduced(c.substitute(inner, r))
                 } else {
