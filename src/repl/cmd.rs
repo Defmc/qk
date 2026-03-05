@@ -141,4 +141,15 @@ pub const COMMANDS: &[Command] = &[
             Ok(())
         },
     },
+    Command {
+        cmd: "load",
+        alias: "l",
+        desc: "Load a script into the context. Each line is executed as a REPL entry",
+        func: &|r: &mut Repl, path: &str| -> Result<()> {
+            let mut reader = std::fs::File::open(path).map_err(|e| Error::Io { e })?;
+            let content = std::io::read_to_string(&mut reader).map_err(|e| Error::Io { e })?;
+            content.lines().for_each(|l| r.exec(l));
+            Ok(())
+        },
+    },
 ];
