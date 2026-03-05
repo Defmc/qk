@@ -96,35 +96,42 @@ impl CompArtifact {
         self.arena[i.0].clone()
     }
 
-    pub fn back_to_ir(&self, idx: TermIdx) -> (IrObj, Scope) {
-        let mut bindings = Vec::new();
-        let mut scope = Scope::default();
-        let r = self.back_to_ir_inner(idx, &mut bindings, &mut scope);
-        (r, scope)
+    pub fn pretty_print(&self, idx: TermIdx, aliases: &HashMap<ir::Id, Box<str>>) {
+        let mut layers = Vec::new();
+        self.pretty_print_inner(idx, &mut layers, aliases);
+        println!();
     }
 
-    fn back_to_ir_inner(
+    fn pretty_print_inner(
         &self,
         idx: TermIdx,
-        bindings: &mut Vec<ir::Id>,
-        scope: &mut Scope,
-    ) -> IrObj {
+        abs_layers: &mut Vec<usize>,
+        aliases: &HashMap<ir::Id, Box<str>>,
+    ) {
+        if let Some(alias) = aliases.get(&ir::Id(idx.0)) {
+            print!("{alias}");
+            return;
+        }
         match self.get(idx) {
-            Term::App(l, r) => IrComponent::App(
-                self.back_to_ir_inner(l, bindings, scope),
-                self.back_to_ir_inner(r, bindings, scope),
-            )
-            .generated(),
-            Term::Var(outer_idx) => {
-                IrComponent::Var(bindings[bindings.len() - outer_idx.0 - 1]).generated()
+            Term::Var(v) => print!(
+                "{}",
+                ir::Scope::id_to_str(&ir::Id(abs_layers[abs_layers.len() - v.0 - 1]))
+            ),
+            Term::App(l, r) => {
+                self.pretty_print_inner(l, abs_layers, aliases);
+                print!(" ");
+                if let Term::App(..) = self.get(r) {
+                    print!("(");
+                    self.pretty_print_inner(r, abs_layers, aliases);
+                    print!(")");
+                } else {
+                    self.pretty_print_inner(r, abs_layers, aliases);
+                }
             }
             Term::Abs { inner } => {
-                let bind = scope.push_res(IrComponent::Binding.generated());
-                bindings.push(bind);
-                let abs = IrComponent::Abs(bind, self.back_to_ir_inner(inner, bindings, scope))
-                    .generated();
-                bindings.pop();
-                abs
+                abs_layers.push(idx.0);
+                self.pretty_print_inner(inner, abs_layers, aliases);
+                abs_layers.pop();
             }
         }
     }
