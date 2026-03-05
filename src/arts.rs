@@ -37,17 +37,17 @@ impl CompArtifact {
 
     pub fn arena_to_string(&self) -> String {
         let mut s = String::new();
-        s.push_str("[");
+        s.push_str("[ ");
         for (i, t) in self.arena.iter().enumerate() {
             if i > 0 {
                 s.push_str(", ");
             }
             let _ = match t {
-                Term::Var(OuterIdx(idx)) => write!(s, " [{i}]=ν{idx}"),
+                Term::Var(OuterIdx(idx)) => write!(s, "[{i}]=ν{idx}"),
                 Term::Abs {
                     inner: TermIdx(idx),
-                } => write!(s, " [{i}]=λ{idx}"),
-                Term::App(TermIdx(l), TermIdx(r)) => write!(s, " [{i}]={l}⋅{r}"),
+                } => write!(s, "[{i}]=λ{idx}"),
+                Term::App(TermIdx(l), TermIdx(r)) => write!(s, "[{i}]={l}⋅{r}"),
             };
         }
         s.push_str(" ]");
