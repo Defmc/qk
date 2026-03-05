@@ -53,6 +53,10 @@ pub enum Error {
     #[error(transparent)]
     #[diagnostic(transparent)]
     CompilerError(#[from] qk::compiler::Error),
+
+    #[error("io error: {e:?}")]
+    #[diagnostic(code(io::error))]
+    Io { e: std::io::Error },
 }
 
 pub struct Repl {
@@ -65,7 +69,6 @@ impl Repl {
     pub fn run(&mut self) -> Result<()> {
         loop {
             let input = self.input();
-            self.runner.reset_diagnostics();
             let input = match input {
                 Ok(s) => s,
                 Err(ReadlineError::Eof | ReadlineError::Interrupted) => {
@@ -76,21 +79,26 @@ impl Repl {
             if input.is_empty() {
                 continue;
             }
-            let result = if let Some(input) = input.strip_prefix(':') {
-                self.cmd(input)
-            } else {
-                self.runner.expression(&input)
-            };
-            if let Err(e) = result {
-                self.runner.report(e, input);
-            }
+            self.exec(input);
+        }
+    }
+
+    pub fn exec(&mut self, input: impl AsRef<str> + ToString) {
+        self.runner.reset_diagnostics();
+        let result = if let Some(input) = input.as_ref().strip_prefix(':') {
+            self.cmd(input)
+        } else {
+            self.runner.expression(input.as_ref())
+        };
+        if let Err(e) = result {
+            self.runner.report(e, input.to_string());
         }
     }
 
     pub fn cmd(&mut self, input: &str) -> Result<()> {
         let (command, args) = input.split_once(' ').unwrap_or((input, ""));
         for c in cmd::COMMANDS {
-            if command == c.alias || command == c.cmd {
+            if c.matches(command) {
                 return (c.func)(self, args);
             }
         }
