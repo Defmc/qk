@@ -120,17 +120,16 @@ impl Runner {
             let mut art = CompArtifact::default();
             std::mem::swap(&mut art, &mut s.art);
             let mut cpu = Cpu::new(art);
+            let aliases = s.irc.scope.get_aliases();
             loop {
                 if s.show.is_on("steps") {
-                    let (obj, scope) = cpu.art.back_to_ir(root);
-                    scope.pretty_print(&obj);
+                    cpu.art.pretty_print(root, &aliases);
                 }
                 let op = s.bench("steps", |_| qk::cpu::Normal::step(&mut cpu, root));
                 match op {
                     cpu::Op::Normal => {
                         if s.show.is_on("normal") {
-                            let (obj, scope) = cpu.art.back_to_ir(root);
-                            scope.pretty_print(&obj);
+                            cpu.art.pretty_print(root, &aliases);
                         }
                         break;
                     }
