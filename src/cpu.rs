@@ -97,7 +97,7 @@ impl Reductor for Normal {
                 {
                     Op::Reduced(c.substitute(inner, r))
                 } else {
-                    Self::step(c, r)
+                    l_step
                 }
             }
         }
