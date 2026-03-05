@@ -115,7 +115,11 @@ impl CompArtifact {
         match self.get(idx) {
             Term::Var(v) => print!(
                 "{}",
-                ir::Scope::id_to_str(&ir::Id(abs_layers[abs_layers.len() - v.0 - 1]))
+                abs_layers
+                    .len()
+                    .checked_sub(v.0 + 1)
+                    .and_then(|n| abs_layers.get(n))
+                    .map_or_else(|| "?".to_string(), |&v| ir::Scope::id_to_str(&ir::Id(v)))
             ),
             Term::App(l, r) => {
                 self.pretty_print_inner(l, abs_layers, aliases);
