@@ -108,8 +108,8 @@ impl Runner {
             Ok(())
         })?;
         if self.show.is_on("compiler") {
-            let hp = HashMap::default();
-            println!("{}", self.art.to_string(&hp));
+            let aliases = self.irc.scope.get_aliases();
+            println!("{}", self.art.to_string(&aliases));
         }
         Ok(())
     }
@@ -123,11 +123,13 @@ impl Runner {
             let aliases = s.irc.scope.get_aliases();
             loop {
                 if s.show.is_on("steps") {
+                    println!("{} | idx: {}", cpu.art.to_string(&aliases), root.0);
                     cpu.art.pretty_print(root, &aliases);
                 }
                 let op = s.bench("steps", |_| qk::cpu::Normal::step(&mut cpu, root));
                 match op {
                     cpu::Op::Normal => {
+                        println!("{} | idx: {}", cpu.art.to_string(&aliases), root.0);
                         if s.show.is_on("normal") {
                             cpu.art.pretty_print(root, &aliases);
                         }
