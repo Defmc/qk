@@ -1,4 +1,5 @@
 ## Quark, maximizing functional languages through a micro-language
+![Quark solving a simple beta reduction on logical operators](https://github.com/Defmc/qk/blob/main/assets/screenshots/repl.png?raw=true)
 No external runtime dependencies, nothing beyond lambda calculus.
 
 Quark is a programming language that has the minimal necessary to expand it.
