@@ -66,12 +66,15 @@ impl Parser {
     }
 
     pub fn check(&mut self, f: impl Fn(&Token) -> bool) -> Result<bool> {
-        Ok(if f(self.current()?) {
-            self.idx += 1;
-            true
+        Ok(f(self.current()?))
+    }
+
+    pub fn adv_if(&mut self, f: impl Fn(&Token) -> bool) -> Result<Option<&Token>> {
+        if self.check(f)? {
+            Ok(self.adv())
         } else {
-            false
-        })
+            Ok(None)
+        }
     }
 
     pub fn syntax(&mut self, tk: TkTy) -> Result<&Token> {
@@ -148,7 +151,10 @@ impl Parser {
 
     pub fn parse_app(&mut self) -> Result<Node> {
         let mut l = self.parse_atom()?;
-        while !self.is_eof() && !self.check(|tk| tk.item == TkTy::Sep)? {
+        while !self.is_eof()
+            && !self.check(|tk| tk.item == TkTy::RParen)?
+            && !self.adv_if(|tk| tk.item == TkTy::Sep)?.is_some()
+        {
             let r = self.parse_atom()?;
             let at = lexer::over(l.at, r.at);
             l = Ast::App(l, r).at(at);
@@ -164,7 +170,7 @@ impl Parser {
         if self.current()?.item == TkTy::Function {
             return self.parse_abs();
         }
-        if self.check(|t| t.item == TkTy::LParen)? {
+        if self.adv_if(|t| t.item == TkTy::LParen)?.is_some() {
             let atom = self.parse_app()?;
             self.syntax(TkTy::RParen)?;
             Ok(atom)
