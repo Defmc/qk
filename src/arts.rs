@@ -1,5 +1,4 @@
-use crate::ir::{self, IrComponent, IrObj, Scope};
-use crate::lexer::Trace;
+use crate::ir;
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -98,17 +97,19 @@ impl CompArtifact {
 
     pub fn pretty_print(&self, idx: TermIdx, aliases: &HashMap<ir::Id, Box<str>>) {
         let mut layers = Vec::new();
-        self.pretty_print_inner(idx, &mut layers, aliases);
+        let mut inverse_cache = self.obj_cache.iter().map(|(ir, ti)| (*ti, *ir)).collect();
+        self.pretty_print_inner(idx, &mut inverse_cache, &mut layers, aliases);
         println!();
     }
 
     fn pretty_print_inner(
         &self,
         idx: TermIdx,
+        inverse_cache: &HashMap<TermIdx, ir::Id>,
         abs_layers: &mut Vec<usize>,
         aliases: &HashMap<ir::Id, Box<str>>,
     ) {
-        if let Some(alias) = aliases.get(&ir::Id(idx.0)) {
+        if let Some(alias) = inverse_cache.get(&idx).and_then(|i| aliases.get(i)) {
             print!("{alias}");
             return;
         }
@@ -122,19 +123,23 @@ impl CompArtifact {
                     .map_or_else(|| "?".to_string(), |&v| ir::Scope::id_to_str(&ir::Id(v)))
             ),
             Term::App(l, r) => {
-                self.pretty_print_inner(l, abs_layers, aliases);
+                self.pretty_print_inner(l, inverse_cache, abs_layers, aliases);
                 print!(" ");
                 if let Term::App(..) = self.get(r) {
                     print!("(");
-                    self.pretty_print_inner(r, abs_layers, aliases);
+                    self.pretty_print_inner(r, inverse_cache, abs_layers, aliases);
                     print!(")");
                 } else {
-                    self.pretty_print_inner(r, abs_layers, aliases);
+                    self.pretty_print_inner(r, inverse_cache, abs_layers, aliases);
                 }
             }
             Term::Abs { inner } => {
                 abs_layers.push(idx.0);
-                self.pretty_print_inner(inner, abs_layers, aliases);
+                print!(
+                    "λ{}.",
+                    ir::Scope::id_to_str(&ir::Id(*abs_layers.last().unwrap()))
+                );
+                self.pretty_print_inner(inner, inverse_cache, abs_layers, aliases);
                 abs_layers.pop();
             }
         }
