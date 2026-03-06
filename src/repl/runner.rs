@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant};
+use std::time::Instant;
 
 use miette::{Diagnostic, NamedSource, Severity};
 use qk::arts::CompArtifact;
@@ -121,10 +121,12 @@ impl Runner {
             std::mem::swap(&mut art, &mut s.art);
             let mut cpu = Cpu::new(art);
             let aliases = s.irc.scope.get_aliases();
+            let empty_aliases = std::collections::HashMap::new();
             loop {
                 if s.show.is_on("steps") {
                     println!("{} | idx: {}", cpu.art.to_string(&aliases), root.0);
                     cpu.art.pretty_print(root, &aliases);
+                    cpu.art.pretty_print(root, &empty_aliases);
                 }
                 let op = s.bench("steps", |_| qk::cpu::Normal::step(&mut cpu, root));
                 match op {
