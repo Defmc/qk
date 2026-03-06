@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::arts::{CompArtifact, Term, TermIdx};
+use crate::arts::{CompArtifact, OuterIdx, Term, TermIdx};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EffectReq;
@@ -50,13 +50,13 @@ impl Cpu {
     /// replaces every ocurrence of its index with the idx requested
     /// for \x.x[b], returns b
     pub fn substitute(&mut self, inner: TermIdx, with: TermIdx) -> TermIdx {
-        if let Some(idx) = self.reductions.get(&(inner, with)) {
-            *idx
-        } else {
-            let t = self.substitute_inner(inner, with, 0).unwrap_or(inner);
-            self.reductions.insert((inner, with), t);
-            t
-        }
+        // if let Some(idx) = self.reductions.get(&(inner, with)) {
+        //     *idx
+        // } else {
+        let t = self.substitute_inner(inner, with, 0).unwrap_or(inner);
+        // self.reductions.insert((inner, with), t);
+        self.shift(t, -1)
+        // }
     }
 
     fn substitute_inner(&mut self, abs: TermIdx, with: TermIdx, layer: usize) -> Option<TermIdx> {
@@ -64,18 +64,50 @@ impl Cpu {
             Term::Var(o) if o.0 == layer => Some(with),
             Term::Var(..) => None,
             Term::App(l, r) => {
-                if self.substitute_inner(l, with, layer).is_some()
-                    || self.substitute_inner(r, with, layer).is_some()
-                {
-                    let new = self.art.push(Term::App(l, r));
-                    Some(new)
+                let new_l = self.substitute_inner(l, with, layer).unwrap_or(l);
+                let new_r = self.substitute_inner(r, with, layer).unwrap_or(r);
+                if new_l != l || new_r != r {
+                    Some(self.art.push(Term::App(new_l, new_r)))
                 } else {
                     None
                 }
             }
+            Term::Abs { inner } => {
+                let with_shifted = self.shift(with, 1);
+                self.substitute_inner(inner, with_shifted, layer + 1)
+                    .and_then(|inner| Some(self.art.push(Term::Abs { inner })))
+            }
+        }
+    }
+
+    pub fn shift(&mut self, term: TermIdx, layers: isize) -> TermIdx {
+        self.shift_inner(term, 0, layers).unwrap_or(term)
+    }
+
+    fn shift_inner(
+        &mut self,
+        term: TermIdx,
+        current_layer: usize,
+        layers: isize,
+    ) -> Option<TermIdx> {
+        match self.art.get(term) {
+            Term::Var(o) if o.0 >= current_layer => Some(
+                self.art
+                    .push(Term::Var(OuterIdx(o.0.strict_add_signed(layers)))),
+            ),
+            Term::Var(..) => None,
             Term::Abs { inner } => self
-                .substitute_inner(inner, with, layer + 1)
+                .shift_inner(inner, current_layer + 1, layers)
                 .and_then(|inner| Some(self.art.push(Term::Abs { inner }))),
+            Term::App(l, r) => {
+                let new_l = self.shift_inner(l, current_layer, layers).unwrap_or(l);
+                let new_r = self.shift_inner(r, current_layer, layers).unwrap_or(r);
+                if new_l != l || new_r != r {
+                    Some(self.art.push(Term::App(new_l, new_r)))
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -89,7 +121,10 @@ impl Reductor for Normal {
                 // `Op::Normal` means that f(a) -> a, so we can say that a variable is normal
                 Op::Normal
             }
-            Term::Abs { inner } => Self::step(c, inner),
+            Term::Abs { inner } => match Self::step(c, inner) {
+                Op::Reduced(new_inner) => Op::Reduced(c.art.push(Term::Abs { inner: new_inner })),
+                op => op,
+            },
             Term::App(l, r) => {
                 let l_step = Self::step(c, l);
                 if l_step == Op::Normal {
