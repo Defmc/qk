@@ -117,10 +117,7 @@ pub struct Normal;
 impl Reductor for Normal {
     fn step(c: &mut Cpu, idx: TermIdx) -> Op {
         match c.art.arena()[idx.0] {
-            Term::Var(..) => {
-                // `Op::Normal` means that f(a) -> a, so we can say that a variable is normal
-                Op::Normal
-            }
+            Term::Var(..) => Op::Normal,
             Term::Abs { inner } => match Self::step(c, inner) {
                 Op::Reduced(new_inner) => Op::Reduced(c.art.push(Term::Abs { inner: new_inner })),
                 op => op,
