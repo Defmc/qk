@@ -77,6 +77,16 @@ pub const COMMANDS: &[Command] = &[
         },
     },
     Command {
+        cmd: "artifacts",
+        alias: "arts",
+        desc: "show IR compiling artifacts",
+        func: &|r: &mut Repl, _input: &str| -> Result<()> {
+            let aliases = r.runner.irc.scope.get_aliases();
+            print!("{}", r.runner.art.to_string(&aliases));
+            Ok(())
+        },
+    },
+    Command {
         cmd: "resources",
         alias: "r",
         desc: "show how many resources are being used",
