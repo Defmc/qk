@@ -18,7 +18,14 @@ pub const BENCH_SETTING: Setting = Setting {
 
 pub const SHOW_SETTING: Setting = Setting {
     all: &[
-        "lexer", "parser", "command", "ir", "compiler", "steps", "normal",
+        "lexer",
+        "parser",
+        "command",
+        "ir",
+        "compiler",
+        "steps",
+        "steps_raw",
+        "normal",
     ],
     on: SmallVec::new_const(),
 };
@@ -124,15 +131,15 @@ impl Runner {
             let empty_aliases = std::collections::HashMap::new();
             loop {
                 if s.show.is_on("steps") {
-                    println!("{} | idx: {}", cpu.art.to_string(&aliases), root.0);
                     cpu.art.pretty_print(root, &aliases);
+                }
+                if s.show.is_on("steps_raw") {
                     cpu.art.pretty_print(root, &empty_aliases);
                 }
                 let op = s.bench("steps", |_| qk::cpu::Normal::step(&mut cpu, root));
                 match op {
                     cpu::Op::Normal => {
-                        println!("{} | idx: {}", cpu.art.to_string(&aliases), root.0);
-                        if s.show.is_on("normal") {
+                        if s.show.is_on("normal") && !s.show.is_on("steps") {
                             cpu.art.pretty_print(root, &aliases);
                         }
                         break;
