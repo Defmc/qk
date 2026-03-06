@@ -165,8 +165,6 @@ impl Runner {
             self.compile(expr, input)?;
 
             self.cpu()?;
-        } else {
-            println!("program finished");
         }
         Ok(())
     }
