@@ -3,7 +3,7 @@ use std::time::Instant;
 use miette::{Diagnostic, NamedSource, Severity};
 use qk::arts::CompArtifact;
 use qk::cpu::{self, Cpu, Reductor};
-use qk::{compiler::CodeUnit, ir::IrCompiler, lexer::TkTy, parser::Parser};
+use qk::{compiler::CodeUnit, ir::IrCompiler, lexer::TkTy, parser2};
 use smallvec::SmallVec;
 
 use crate::repl::Result;
@@ -80,14 +80,16 @@ impl Runner {
         // TODO: This is not ideal. But since we don't have namespaces yet, it's the only way that
         // declarations can exist
         let is_decl = lexer.iter().any(|t| t.item == TkTy::Assign);
-        let t = self.bench("parser", |_| {
-            let mut p = Parser::new(lexer);
-            if is_decl {
-                p.parse_program()
-            } else {
-                p.parse_app()
-            }
-        })?;
+        let t = self
+            .bench("parser", |_| {
+                let p = if is_decl {
+                    parser2::program()
+                } else {
+                    parser2::expr()
+                };
+                p.run(&lexer)
+            })?
+            .0;
         if self.show.is_on("parser") {
             qk::ast::display_node(&t);
         }
