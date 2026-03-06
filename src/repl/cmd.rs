@@ -71,7 +71,6 @@ pub const COMMANDS: &[Command] = &[
                         .irc
                         .scope
                         .pretty_print(&r.runner.irc.scope.res_pool[v.0]);
-                    println!();
                 }
             }
             Ok(())
