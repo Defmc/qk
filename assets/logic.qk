@@ -1,0 +1,10 @@
+True x y = x
+False x y = y
+
+Not x = x False True
+Or x y = x True y
+Nand x y = x (Not y) False
+Xnor x y = x y (Not y)
+Xor x y = x (Not y) y
+And x y = x y False
+Nor x y = x False (Not y)
