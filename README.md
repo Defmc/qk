@@ -16,6 +16,6 @@ Just so you know where this project heads, here's my goals with it:
 - - It includes the syntax, behavior and performance.
 - What is fundamental, should not change.
 - - Once I get to a level where I can call it _at least_ useful, I'll ensure support for that version for a lifetime.
-- - It doesn't mean I plan on improving older versions, but to make sure you can somehow use legacy libraries into new projects.
+- - It doesn't mean I plan on improving older versions, but that I'll make sure you can somehow use legacy libraries into new projects.
 - `qk` will only have what is fundamentally necessary to satisfy the requirements above.
 - - It doesn't mean there won't be recommended libraries for each use-case. It means that if you don't like something, feel free to do your own implementation (that's the whole goal of `qk`!).
