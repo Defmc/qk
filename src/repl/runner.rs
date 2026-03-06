@@ -3,7 +3,7 @@ use std::time::Instant;
 use miette::{Diagnostic, NamedSource, Severity};
 use qk::arts::CompArtifact;
 use qk::cpu::{self, Cpu, Reductor};
-use qk::{compiler::CodeUnit, ir::IrCompiler, lexer::TkTy, parser2};
+use qk::{compiler::CodeUnit, ir::IrCompiler, lexer::TkTy, parser};
 use smallvec::SmallVec;
 
 use crate::repl::Result;
@@ -83,9 +83,9 @@ impl Runner {
         let t = self
             .bench("parser", |_| {
                 let p = if is_decl {
-                    parser2::program()
+                    parser::program()
                 } else {
-                    parser2::expr()
+                    parser::expr()
                 };
                 p.run(&lexer)
             })?

@@ -31,153 +31,183 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+pub type ParseResult<'a, T> = Result<(T, &'a [Token])>;
 
-#[derive(Debug)]
-pub struct Parser {
-    pub tokens: Vec<Token>,
-    pub idx: usize,
+pub struct Parser<T> {
+    parse: Box<dyn for<'a> Fn(&'a [Token]) -> ParseResult<'a, T>>,
 }
 
-impl Parser {
-    pub fn cleared(mut self) -> Self {
-        self.idx = 0;
-        self
+impl<T: 'static> Parser<T> {
+    pub fn new(f: impl Fn(&[Token]) -> ParseResult<T> + 'static) -> Self {
+        Self { parse: Box::new(f) }
     }
 
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, idx: 0 }
+    pub fn run<'a>(&self, input: &'a [Token]) -> ParseResult<'a, T> {
+        (self.parse)(input)
     }
 
-    pub fn current(&self) -> Result<&Token> {
-        self.peek(0)
+    pub fn map<U: 'static>(self, f: impl Fn(T) -> U + 'static) -> Parser<U> {
+        Parser::new(move |input| self.run(input).map(|(v, r)| (f(v), r)))
     }
 
-    pub fn peek(&self, offset: usize) -> Result<&Token> {
-        self.tokens
-            .get(self.idx + offset)
-            .ok_or_else(|| Error::UnexpectedEof {
-                at: self.tokens.last().map(|t| t.at).unwrap_or((0..=0).into()),
-            })
+    pub fn or(self, alternative: Parser<T>) -> Parser<T> {
+        Parser::new(move |input| self.run(input).or_else(|_| alternative.run(input)))
     }
 
-    pub fn adv(&mut self) -> Option<&Token> {
-        self.idx += 1;
-        self.tokens.get(self.idx - 1)
+    pub fn and_then<U: 'static>(self, f: impl Fn(T) -> Parser<U> + 'static) -> Parser<U> {
+        Parser::new(move |input| {
+            let (val, rest) = self.run(input)?;
+            f(val).run(rest)
+        })
     }
 
-    pub fn check(&mut self, f: impl Fn(&Token) -> bool) -> Result<bool> {
-        Ok(f(self.current()?))
+    pub fn skip_left<U: 'static>(self, right: Parser<U>) -> Parser<U> {
+        Parser::new(move |input| {
+            let (_, res) = self.run(input)?;
+            right.run(res)
+        })
     }
 
-    pub fn adv_if(&mut self, f: impl Fn(&Token) -> bool) -> Result<Option<&Token>> {
-        if self.check(f)? {
-            Ok(self.adv())
-        } else {
-            Ok(None)
-        }
+    pub fn skip_right<U: 'static>(self, right: Parser<U>) -> Self {
+        Parser::new(move |input| {
+            let (val, res) = self.run(input)?;
+            let (_, res) = right.run(res)?;
+            Ok((val, res))
+        })
     }
 
-    pub fn syntax(&mut self, tk: TkTy) -> Result<&Token> {
-        let peek = self.current()?;
-        if peek.item == tk {
-            self.idx += 1;
-            Ok(&self.tokens[self.idx - 1])
+    pub fn paired<U: 'static>(self, right: Parser<U>) -> Parser<(T, U)> {
+        Parser::new(move |input| {
+            let (val_l, res) = self.run(input)?;
+            let (val_r, res) = right.run(res)?;
+            Ok(((val_l, val_r), res))
+        })
+    }
+
+    pub fn many(self, min: usize) -> Parser<Vec<T>> {
+        Parser::new(move |mut input| {
+            let mut vs = Vec::new();
+            while let Ok((v, res)) = self.run(input) {
+                vs.push(v);
+                input = res;
+            }
+            if vs.len() < min {
+                Err(Error::UnexpectedEof { at: (0..=0).into() })
+            } else {
+                Ok((vs, input))
+            }
+        })
+    }
+
+    pub fn lazy(f: impl Fn() -> Self + 'static) -> Self {
+        Parser::new(move |input| f().run(input))
+    }
+
+    pub fn one_of(branches: Vec<Self>) -> Self {
+        Parser::new(move |input| {
+            let mut branches = branches.iter();
+            let mut last = branches.next().expect("`one_of` is empty");
+            let mut v = last.run(input);
+            loop {
+                if v.is_ok() {
+                    break;
+                }
+                if let Some(next_p) = branches.next() {
+                    last = next_p;
+                    v = last.run(input);
+                } else {
+                    break;
+                }
+            }
+            v
+        })
+    }
+}
+pub fn syntax<'a>(tk: TkTy) -> Parser<Token> {
+    Parser::new(move |input| {
+        let first = input
+            .first()
+            .ok_or_else(|| Error::UnexpectedEof { at: (0..=0).into() })?
+            .clone();
+        if first.item == tk {
+            Ok((first, &input[1..]))
         } else {
             Err(Error::UnexpectedToken {
-                exp: tk,
-                tk: peek.item.clone(),
-                at: peek.at,
+                exp: tk.clone(),
+                at: first.at.clone(),
+                tk: first.item.clone(),
             })
         }
-    }
+    })
+}
 
-    pub fn parse(&mut self) -> Result<Node> {
-        self.parse_app()
-    }
+pub fn program() -> Parser<Node> {
+    Parser::many(decl().skip_right(Parser::many(syntax(TkTy::Sep), 1)), 0).map(|decls| {
+        let start = decls.first().map(|d| d.at.offset() as usize).unwrap_or(0);
+        let end = decls.last().map(|d| d.at.offset() as usize).unwrap_or(0);
+        Ast::Program(decls).at((start..=end).into())
+    })
+}
 
-    pub fn parse_program(&mut self) -> Result<Node> {
-        let mut steps = Vec::new();
-        let start = self.current()?.at;
-        while self.idx < self.tokens.len() {
-            steps.push(self.parse_step()?);
-        }
-        let end = steps.last().map(|n| n.at).unwrap_or(start);
-        Ok(Ast::Program(steps).at(lexer::over(start, end)))
-    }
-
-    pub fn parse_step(&mut self) -> Result<Node> {
-        let ident = self.syntax(TkTy::Ident)?.at;
-        let mut params = Vec::new();
-        loop {
-            match self.syntax(TkTy::Ident) {
-                Ok(p) => params.push(p.at),
-                Err(Error::UnexpectedToken { .. }) => break,
-                Err(e) => return Err(e),
+pub fn decl() -> Parser<Node> {
+    syntax(TkTy::Ident)
+        .paired(Parser::many(syntax(TkTy::Ident), 1))
+        .skip_right(syntax(TkTy::Assign))
+        .paired(expr())
+        .map(|((d, vars), expr)| {
+            let span = lexer::over(d.at, expr.at);
+            Ast::Def {
+                ident: d.at,
+                params: vars.into_iter().map(|tk| tk.at).collect(),
+                body: expr,
             }
-        }
-        self.syntax(TkTy::Assign)?;
-        let body = self.parse_app()?;
-        let span = lexer::over(ident, body.at);
-        Ok(Ast::Def {
-            ident,
-            params,
-            body,
-        }
-        .at(span))
-    }
+            .at(span)
+        })
+}
 
-    pub fn parse_abs(&mut self) -> Result<Node> {
-        self.syntax(TkTy::Function)?;
+pub fn expr() -> Parser<Node> {
+    app()
+}
 
-        let mut params = vec![self.syntax(TkTy::Ident)?.at];
+pub fn app() -> Parser<Node> {
+    Parser::many(Parser::lazy(atom), 1).map(|atoms| {
+        let mut atoms = atoms.into_iter();
+        let first = atoms.next().unwrap();
+        atoms.fold(first, |l, r| {
+            let span = lexer::over(l.at, r.at);
+            Ast::App(l, r).at(span)
+        })
+    })
+}
 
-        while self.current()?.item == TkTy::Ident {
-            let var_span = self.current()?.at;
-            self.idx += 1;
-            params.push(var_span);
-        }
+pub fn abs() -> Parser<Node> {
+    syntax(TkTy::Function)
+        .skip_left(syntax(TkTy::Ident))
+        .paired(
+            syntax(TkTy::Abstraction)
+                .skip_left(Parser::lazy(atom))
+                .or(Parser::lazy(abs)),
+        )
+        .map(move |(var, inner)| {
+            let inner_at = inner.at;
+            Ast::Abs(var.at, inner).at(lexer::over(var.at, inner_at))
+        })
+}
 
-        self.syntax(TkTy::Abstraction)?;
-        let body = self.parse_app()?;
+pub fn parens() -> Parser<Node> {
+    syntax(TkTy::LParen)
+        .skip_left(Parser::lazy(atom))
+        .skip_right(syntax(TkTy::RParen))
+}
 
-        let mut result = body;
-        for param_span in params.into_iter().rev() {
-            let at = lexer::over(param_span, result.at);
-            result = Ast::Abs(param_span, result).at(at);
-        }
+pub fn var() -> Parser<Node> {
+    syntax(TkTy::Ident).map(move |v| Ast::Var.at(v.at))
+}
 
-        Ok(result)
-    }
-
-    pub fn parse_app(&mut self) -> Result<Node> {
-        let mut l = self.parse_atom()?;
-        while !self.is_eof()
-            && !self.check(|tk| tk.item == TkTy::RParen)?
-            && !self.adv_if(|tk| tk.item == TkTy::Sep)?.is_some()
-        {
-            let r = self.parse_atom()?;
-            let at = lexer::over(l.at, r.at);
-            l = Ast::App(l, r).at(at);
-        }
-        Ok(l)
-    }
-
-    pub fn is_eof(&self) -> bool {
-        self.idx >= self.tokens.len()
-    }
-
-    pub fn parse_atom(&mut self) -> Result<Node> {
-        if self.current()?.item == TkTy::Function {
-            return self.parse_abs();
-        }
-        if self.adv_if(|t| t.item == TkTy::LParen)?.is_some() {
-            let atom = self.parse_app()?;
-            self.syntax(TkTy::RParen)?;
-            Ok(atom)
-        } else {
-            let ident = self.syntax(TkTy::Ident)?;
-            let node = Ast::Var.at(ident.at);
-            Ok(node)
-        }
-    }
+pub fn atom() -> Parser<Node> {
+    Parser::one_of(vec![
+        Parser::lazy(parens),
+        Parser::lazy(abs),
+        Parser::lazy(var),
+    ])
 }

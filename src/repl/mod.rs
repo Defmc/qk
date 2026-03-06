@@ -44,7 +44,7 @@ pub enum Error {
 
     #[error(transparent)]
     #[diagnostic(transparent)]
-    ParserError(#[from] qk::parser2::Error),
+    ParserError(#[from] qk::parser::Error),
 
     #[error(transparent)]
     #[diagnostic(transparent)]
