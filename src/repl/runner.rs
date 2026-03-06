@@ -135,6 +135,7 @@ impl Runner {
                 }
                 if s.show.is_on("steps_raw") {
                     cpu.art.pretty_print(root, &empty_aliases);
+                    println!("{}", cpu.art.to_string(&aliases));
                 }
                 let op = s.bench("steps", |_| qk::cpu::Normal::step(&mut cpu, root));
                 match op {
