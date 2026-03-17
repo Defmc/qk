@@ -1,0 +1,12 @@
+I x = x
+K x y = x
+S x y z = x z (y z)
+B x y z = x (y z)
+U x = x x
+# Y f = (λx.f (x x)) (λx.f (x x))
+Y f = U λx.f (U x)
+Z f = U λx.f(λv.x x v)
+θ = U λx y.y (x x y)
+
+# call-by-value fixed-point combinator
+θbv = U λx y.y (λz.x x y z)
