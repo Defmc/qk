@@ -1,10 +1,9 @@
 True x y = x
 False x y = y
-
-Not x = x False True
-Or x y = x True y
-Nand x y = x (Not y) False
-Xnor x y = x y (Not y)
-Xor x y = x (Not y) y
-And x y = x y False
-Nor x y = x False (Not y)
+not x = x False True
+or x y = x True y
+nand x y = x (not y) False
+xnor x y = x y (not y)
+xor x y = x (not y) y
+and x y = x y False
+nor x y = x False (not y)
