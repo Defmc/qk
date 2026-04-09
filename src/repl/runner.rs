@@ -52,28 +52,12 @@ impl Runner {
         }
     }
 
-    pub fn lexer(&mut self, src: &str) -> Result<Vec<qk::lexer::Token>> {
-        let lexer: Vec<_> = self.bench("lexer", |_| TkTy::processed(src).collect());
-        let lexer: Vec<_> = lexer
-            .into_iter()
-            .filter_map(|tk| match tk {
-                Ok(tk) => Some(tk),
-                Err(e) => {
-                    self.report(e, src.to_string());
-                    None
-                }
-            })
-            .collect();
-
-        if self.show.is_on("lexer") {
-            let report = miette::MietteDiagnostic::new("lexer's output")
-                .with_labels(lexer[..lexer.len() - 1].iter().map(|tk| {
-                    miette::LabeledSpan::new_with_span(Some(format!("{:?}", tk.item)), tk.at)
-                }))
-                .with_severity(Severity::Advice);
-            self.report(report, src.to_string());
-        }
-        Ok(lexer)
+    pub fn lexer(&mut self, src: &str) -> Result<Vec<qk::padam::Token>> {
+        use qk::padam;
+        let lexer = padam::Lexer::default();
+        let tokens = lexer.lex(src).unwrap();
+        println!("{tokens:?}");
+        Ok(tokens)
     }
 
     pub fn parse(&mut self, lexer: Vec<qk::lexer::Token>, _src: &str) -> Result<qk::ast::Node> {
@@ -158,17 +142,17 @@ impl Runner {
     }
 
     pub fn expression(&mut self, input: &str) -> Result<()> {
-        let lexer = self.lexer(input)?;
-        let ast = self.parse(lexer, input)?;
-        let ir = self.ir(ast, input)?;
-        if let Some(expr) = ir {
-            if self.show.is_on("ir") {
-                println!("{expr:#?}")
-            }
-            self.compile(expr, input)?;
-
-            self.cpu()?;
-        }
+        let _lexer = self.lexer(input)?;
+        // let ast = self.parse(lexer, input)?;
+        // let ir = self.ir(ast, input)?;
+        // if let Some(expr) = ir {
+        //     if self.show.is_on("ir") {
+        //         println!("{expr:#?}")
+        //     }
+        //     self.compile(expr, input)?;
+        //
+        //     self.cpu()?;
+        // }
         Ok(())
     }
 
