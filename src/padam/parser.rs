@@ -10,8 +10,6 @@ pub struct Parser {
 
 pub trait GrammarRule<T: ?Sized> {
     fn parse<'a>(&self, tokens: &'a T) -> Result<(Ast, &'a T)>;
-
-    fn min_length(&self) -> usize;
 }
 
 pub struct Seq {
@@ -30,10 +28,6 @@ impl GrammarRule<[Token]> for Seq {
         }
         Ok(((self.redex)(build), tokens))
     }
-
-    fn min_length(&self) -> usize {
-        self.order.iter().fold(0, |acc, g| g.min_length() + acc)
-    }
 }
 
 pub struct Or {
@@ -50,14 +44,6 @@ impl GrammarRule<[Token]> for Or {
             }
         }
         last_attempt
-    }
-
-    fn min_length(&self) -> usize {
-        self.variants
-            .iter()
-            .min_by(|gx, gy| gx.min_length().cmp(&gy.min_length()))
-            .unwrap()
-            .min_length()
     }
 }
 
@@ -82,9 +68,5 @@ impl GrammarRule<[Token]> for Any {
         } else {
             Err(Error::NotEnoughRepeats)
         }
-    }
-
-    fn min_length(&self) -> usize {
-        self.item.min_length() * self.min_amount
     }
 }

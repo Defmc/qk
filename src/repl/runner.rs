@@ -54,7 +54,7 @@ impl Runner {
 
     pub fn lexer(&mut self, src: &str) -> Result<Vec<qk::padam::Token>> {
         use qk::padam;
-        let lexer = padam::Lexer::default();
+        let lexer = padam::lexer::Lexer::default();
         let tokens = lexer.lex(src).unwrap();
         println!("{tokens:?}");
         Ok(tokens)
