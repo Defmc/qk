@@ -56,7 +56,7 @@ pub fn literal(kw: &str) -> FnToken {
     }
 }
 
-pub fn char(ch: char) -> FnToken {
+pub fn single_char(ch: char) -> FnToken {
     FnToken {
         f: Box::new(move |i, c| i == 0 && ch == c),
         min_amount: 1,
@@ -95,7 +95,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn comment<T: GrammarRule<str> + 'static>(gr: T) -> Self {
+    pub fn ignore<T: GrammarRule<str> + 'static>(gr: T) -> Self {
         Self {
             name: Box::default(),
             toker: Box::new(gr),
@@ -165,14 +165,14 @@ impl Default for Lexer {
         let tokenizers = [
             Tokenizer::new("FnKw", literal("fn")),
             Tokenizer::new("FnImpl", literal("=>")),
-            Tokenizer::new("OpenParen", char('(')),
-            Tokenizer::new("CloseParen", char(')')),
-            Tokenizer::new("Eol", char('\n')),
-            Tokenizer::comment(char(' ')),
-            Tokenizer::comment(char('\t')),
+            Tokenizer::new("OpenParen", single_char('(')),
+            Tokenizer::new("CloseParen", single_char(')')),
+            Tokenizer::new("Eol", single_char('\n')),
+            Tokenizer::ignore(single_char(' ')),
+            Tokenizer::ignore(single_char('\t')),
             Tokenizer::new("Ident", ident()),
-            Tokenizer::comment(comment()),
-            Tokenizer::new("Assign", char('=')),
+            Tokenizer::ignore(comment()),
+            Tokenizer::new("Assign", single_char('=')),
         ]
         .into_iter();
         Self::new(tokenizers)
