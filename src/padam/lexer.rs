@@ -17,8 +17,7 @@ pub struct FnToken {
 impl GrammarRule<str> for FnToken {
     fn parse<'a>(&self, tokens: &'a str) -> Result<(Ast, &'a str)> {
         let end = tokens
-            .chars()
-            .enumerate()
+            .char_indices()
             .take_while(|(i, c)| (self.f)(*i, *c))
             .count();
 
@@ -52,7 +51,7 @@ pub fn literal(kw: &str) -> FnToken {
     let chars: Vec<_> = kw.chars().collect();
     FnToken {
         f: Box::new(move |i, c| chars.get(i) == Some(&c)),
-        min_amount: kw.len(),
+        min_amount: kw.chars().count(),
         greedy: false,
     }
 }
