@@ -206,6 +206,8 @@ pub mod tests {
     }
 
     pub mod idents {
+        use crate::padam::lexer::IDENT_TY;
+
         use super::{Lexer, expected};
 
         #[test]
@@ -213,13 +215,47 @@ pub mod tests {
             expected(
                 &Lexer::default(),
                 "plain snake_case PascalCase UPPER_SNAKE_CASE MiXeD WithNumb3r _123IsValid s O Nice",
-                &["Ident"; 10],
+                &[IDENT_TY; 10],
+            );
+        }
+    }
+
+    pub mod snippets {
+        use crate::padam::lexer::{FN_IMPL_TY, IDENT_TY};
+
+        use super::{Lexer, expected};
+
+        #[test]
+        pub fn fn_decl() {
+            expected(
+                &Lexer::default(),
+                "id x => x",
+                &[IDENT_TY, IDENT_TY, FN_IMPL_TY, IDENT_TY],
+            );
+        }
+    }
+
+    pub mod comments {
+        use crate::padam::lexer::{FN_IMPL_TY, IDENT_TY};
+
+        use super::{Lexer, expected};
+
+        #[test]
+        pub fn till_end() {
+            expected(
+                &Lexer::default(),
+                "id # and then, nothing more.",
+                &[IDENT_TY],
             );
         }
 
         #[test]
-        pub fn plain() {
-            expected(&Lexer::default(), "plain", &["Ident"]);
+        pub fn halfway_through() {
+            expected(
+                &Lexer::default(),
+                "id # and then, nothing more... oh wha- # x => x",
+                &[IDENT_TY, IDENT_TY, FN_IMPL_TY, IDENT_TY],
+            );
         }
     }
 }
