@@ -97,26 +97,56 @@ impl<T> Parser<T> for Or<T> {
     }
 }
 
-pub struct Any {
-    pub item: Rule,
-    pub min_amount: usize,
-    pub redex: Box<dyn Fn(Vec<Ast>) -> Ast>,
+pub struct Rep<T> {
+    parser: Box<dyn Parser<T>>,
+    min: usize,
+    max: usize,
 }
 
-impl GrammarRule<[Token]> for Any {
-    fn parse<'a>(&self, tokens: &'a [Token]) -> Result<(Ast, &'a [Token])> {
-        let mut tokens = tokens;
-        let mut build = Vec::with_capacity(self.min_amount);
-        let mut last = self.item.parse(tokens);
-        while let Ok((last_ast, last_tks)) = last {
-            build.push(last_ast);
-            tokens = &tokens[last_tks.len()..];
-            last = self.item.parse(tokens);
+impl<T> Rep<T> {
+    pub fn new(parser: Box<dyn Parser<T>>, min: usize, max: usize) -> Self {
+        Self { parser, min, max }
+    }
+
+    // T+
+    pub fn plus(parser: Box<dyn Parser<T>>) -> Self {
+        Self::new(parser, 1, usize::MAX)
+    }
+
+    // T*
+    pub fn any(parser: Box<dyn Parser<T>>) -> Self {
+        Self::new(parser, 0, usize::MAX)
+    }
+
+    // T?
+    pub fn option(parser: Box<dyn Parser<T>>) -> Self {
+        Self::new(parser, 0, 1)
+    }
+}
+
+impl<T> Parser<Vec<T>> for Rep<T> {
+    fn parse<'a>(
+        &self,
+        nt: &'a NonTerminals,
+        lex: &'a Lexer,
+        tks: &'a [Token],
+    ) -> Result<(Vec<T>, &'a [Token])> {
+        let mut remaining_tokens = tks;
+        let mut v = Vec::new();
+
+        while v.len() < self.max
+            && let Ok((ast, rem)) = self.parser.parse(nt, lex, remaining_tokens)
+        {
+            remaining_tokens = rem;
+            v.push(ast);
         }
-        if build.len() >= self.min_amount {
-            Ok(((self.redex)(build), tokens))
-        } else {
-            Err(Error::NotEnoughRepeats)
+
+        if v.len() < self.min {
+            return Err(Error::NoEnoughRep {
+                tks_consumed: tks.len() - remaining_tokens.len(),
+            });
         }
+
+        return Ok((v, remaining_tokens));
     }
 }
