@@ -21,9 +21,16 @@ pub trait GrammarRule<T: ?Sized> {
     fn parse<'a>(&self, tokens: &'a T) -> Result<(Ast, &'a T)>;
 }
 
-pub struct Seq {
-    pub order: Vec<Rule>,
-    pub redex: Box<dyn Fn(Vec<Ast>) -> Ast>,
+pub type Result<T> = std::result::Result<T, Error>;
+pub type NonTerminals = HashMap<Box<str>, Box<dyn Parser<Ast>>>;
+
+pub trait Parser<T> {
+    fn parse<'a>(
+        &self,
+        nt: &'a NonTerminals,
+        lex: &'a Lexer,
+        tks: &'a [Token],
+    ) -> Result<(T, &'a [Token])>;
 }
 
 impl GrammarRule<[Token]> for Seq {
