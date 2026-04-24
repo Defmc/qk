@@ -33,16 +33,35 @@ pub trait Parser<T> {
     ) -> Result<(T, &'a [Token])>;
 }
 
-impl GrammarRule<[Token]> for Seq {
-    fn parse<'a>(&self, tokens: &'a [Token]) -> Result<(Ast, &'a [Token])> {
-        let mut tokens = tokens;
-        let mut build = Vec::with_capacity(self.order.len());
-        for step in &self.order {
-            let (ast, tks_consumed) = step.parse(tokens)?;
-            build.push(ast);
-            tokens = &tokens[tks_consumed.len()..];
-        }
-        Ok(((self.redex)(build), tokens))
+pub struct Seq<T> {
+    seq: Vec<Box<dyn Parser<T>>>,
+}
+
+impl<T> Seq<T> {
+    pub fn new(seq: Vec<Box<dyn Parser<T>>>) -> Self {
+        Self { seq }
+    }
+}
+
+impl<T> Parser<Vec<T>> for Seq<T> {
+    fn parse<'a>(
+        &self,
+        nt: &'a NonTerminals,
+        lex: &'a Lexer,
+        tks: &'a [Token],
+    ) -> Result<(Vec<T>, &'a [Token])> {
+        let mut remaining_tokens = tks;
+        let v = self
+            .seq
+            .iter()
+            .map(|parser| {
+                parser
+                    .parse(nt, lex, remaining_tokens)
+                    .inspect(|(_, rem)| remaining_tokens = rem)
+                    .map(|(p, _)| p)
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok((v, remaining_tokens))
     }
 }
 
