@@ -1,4 +1,13 @@
-use crate::padam::ast::Ast;
+// Expr = App
+// App =
+//      Atom+
+// Atom =
+//      "(" Expr ")"
+//      Abs
+//      Var
+// Abs =
+//      "fn" <Ident>+ "=>" Expr
+// Var = <Ident>
 
 pub type Rule = Box<dyn GrammarRule<[Token]>>;
 

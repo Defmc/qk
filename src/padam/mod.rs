@@ -5,7 +5,6 @@ use crate::lexer::Meta;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub mod ast;
 pub mod lexer;
 pub mod parser;
 
