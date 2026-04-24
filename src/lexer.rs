@@ -1,4 +1,3 @@
-use logos::Logos;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
@@ -42,8 +41,6 @@ pub fn over(l: SourceSpan, r: SourceSpan) -> SourceSpan {
     SourceSpan::new(l.offset().into(), r.offset() + r.len() - l.offset())
 }
 
-pub type Token = Meta<TkTy>;
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, Debug, Diagnostic, Default, Clone, PartialEq)]
@@ -62,48 +59,4 @@ pub enum Error {
     #[error("other error")]
     #[diagnostic(code(lexer::other_error), help("this shouldn't happen. contact me"))]
     Other,
-}
-
-#[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[ \t\f]+", error = Error)]
-pub enum TkTy {
-    #[token("\\")]
-    #[token("λ")]
-    #[token("fn")]
-    Function,
-
-    #[token("=>")]
-    #[token(".")]
-    Abstraction,
-
-    #[token("(")]
-    LParen,
-
-    #[token(")")]
-    RParen,
-
-    #[token("=")]
-    Assign,
-
-    #[regex("[a-zA-Z]+")]
-    Ident,
-
-    #[token("\n+")]
-    Sep,
-}
-
-impl TkTy {
-    pub fn processed(s: &str) -> impl Iterator<Item = Result<Meta<TkTy>>> {
-        TkTy::lexer(s)
-            .spanned()
-            .chain(std::iter::once((Ok(TkTy::Sep), 0..1)))
-            .map(|(tk, s)| {
-                let at = (s.start..=(s.end - 1)).into();
-                tk.map_or_else(
-                    // TODO: use `_e` wiser.
-                    |_e| Err(Error::InvalidCharSeq { at }),
-                    |tk| Ok(Meta { item: tk, at }),
-                )
-            })
-    }
 }
