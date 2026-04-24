@@ -132,4 +132,9 @@ impl<T: 'static> Parser<T> {
     pub fn option(parser: Self) -> Parser<Vec<T>> {
         Self::rep(parser, 0, 1)
     }
+
+    pub fn external(name: &str) -> Parser<Ast> {
+        let name: Box<str> = name.into();
+        Parser::new(move |nt, lex, tks| nt[&name].parse(nt, lex, tks))
+    }
 }
