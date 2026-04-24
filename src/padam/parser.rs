@@ -9,16 +9,34 @@
 //      "fn" <Ident>+ "=>" Expr
 // Var = <Ident>
 
-pub type Rule = Box<dyn GrammarRule<[Token]>>;
+use std::collections::HashMap;
 
-use crate::padam::{Error, Result, Token};
+use miette::Diagnostic;
+use thiserror::Error;
 
-pub struct Parser {
-    pub grammar: Rule,
+use crate::{
+    ast::Ast,
+    padam::{Token, lexer::Lexer},
+};
+
+#[derive(Error, Debug, Diagnostic)]
+pub enum Error {
+    #[error("no alternative to parser this snippet")]
+    #[diagnostic(code(parser::no_alternative))]
+    NoAlternative,
+
+    #[error("there was no enough symbols to repeat the sequence")]
+    #[diagnostic(code(parser::no_enough_rep))]
+    NoEnoughRep { tks_consumed: usize },
 }
 
-pub trait GrammarRule<T: ?Sized> {
-    fn parse<'a>(&self, tokens: &'a T) -> Result<(Ast, &'a T)>;
+impl Error {
+    pub fn tokens_consumed(&self) -> Option<usize> {
+        match self {
+            Self::NoAlternative => None,
+            Self::NoEnoughRep { tks_consumed } => Some(*tks_consumed),
+        }
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
