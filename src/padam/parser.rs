@@ -65,20 +65,35 @@ impl<T> Parser<Vec<T>> for Seq<T> {
     }
 }
 
-pub struct Or {
-    pub variants: Vec<Rule>,
+pub struct Or<T> {
+    alternatives: Vec<Box<dyn Parser<T>>>,
 }
 
-impl GrammarRule<[Token]> for Or {
-    fn parse<'a>(&self, tokens: &'a [Token]) -> Result<(Ast, &'a [Token])> {
-        let mut last_attempt = Err(Error::Impossible);
-        for var in &self.variants {
-            last_attempt = var.parse(tokens);
-            if last_attempt.is_ok() {
-                break;
+impl<T> Or<T> {
+    pub fn new(alternatives: Vec<Box<dyn Parser<T>>>) -> Self {
+        Self { alternatives }
+    }
+}
+
+impl<T> Parser<T> for Or<T> {
+    fn parse<'a>(
+        &self,
+        nt: &'a NonTerminals,
+        lex: &'a Lexer,
+        tks: &'a [Token],
+    ) -> Result<(T, &'a [Token])> {
+        let mut biggest_err = Error::NoAlternative;
+        for alt in &self.alternatives {
+            match alt.parse(nt, lex, tks) {
+                Ok(v) => return Ok(v),
+                Err(e) => {
+                    if e.tokens_consumed() > biggest_err.tokens_consumed() {
+                        biggest_err = e;
+                    }
+                }
             }
         }
-        last_attempt
+        Err(biggest_err)
     }
 }
 
