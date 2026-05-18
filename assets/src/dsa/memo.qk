@@ -1,0 +1,23 @@
+Hash, HashMap, map! = from dsa;
+Option, Id = from core;
+
+memoize f = memoizeKey f Id
+memoizeKey (f : α -> f.type -> β) (k : α -> ω) { α ∈ Hash } =
+    memory = ref HashMap::new ()
+    hitOrMiss v =
+        if memory.contains v then 
+            memory.at(v)
+        else 
+            memory.insert $ f hitOrMiss v
+            memory.at(v)
+    hitOrMiss
+
+
+grammar, lexer, semantic = from lang;
+
+# usage: optimized_fib = memo fib
+MemoExpr (_lit : lexer::Literal "memo") (f : grammar::Expr) { f.semantic.type ∈ Fn ∪ Named } : grammar::Expr =
+    app_expr = grammar::Expr::App,
+    memoized_arg = lang::semantic::new_named_symbol
+    f_to_memo = f.replace (λg = app_expr f.semantic.name ⊗ rhs => Some $ app_expr memoized_arg ⊗ rhs 
+    lang::quote `memoize λ{memoized_arg}.{f_to_memo}`
