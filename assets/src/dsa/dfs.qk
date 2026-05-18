@@ -1,0 +1,20 @@
+Hash, HashMap = from dsa;
+
+dfs (pred : pred.type -> α -> Bool) { α ∈ Hash } : pred.type -> α Bool =
+    states = ref HashMap::new
+    inner v =  match states.at(v)
+        | Some v => v
+        | None => 
+            states.insert v Bool::False
+            states.update $ pred inner v
+
+
+# example from the [Leetcode's 1306. Jump Game III](https://leetcode.com/problems/jump-game-iii/)
+Solution = type
+    can_reach arr start =
+        attempt = dfs λf i => [
+            arr.at(i) == 0,
+            i + arr.at(i) < arr.len && f $ arr.at(i) + i,
+            arr.at(i) <= i && f $ arr.at(i) - i
+        ].any id
+        attempt start
